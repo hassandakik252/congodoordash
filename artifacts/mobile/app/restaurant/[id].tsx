@@ -12,7 +12,7 @@ import Colors from "@/constants/colors";
 import { useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
 import { restaurantApi } from "@/services/api";
-import { formatCurrency, unitSuffix } from "@/utils/format";
+import { formatCurrency, unitSuffix, VERTICALS } from "@/utils/format";
 
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,6 +41,8 @@ export default function RestaurantDetailScreen() {
 
   // Non-restaurant stores (grocery/retail/pharmacy) get an in-store search box.
   const isRestaurant = !restaurant?.vertical || restaurant.vertical === "restaurant";
+  const storeIcon = (VERTICALS.find(v => v.id === (restaurant?.vertical ?? "restaurant"))?.icon ?? "storefront") as any;
+  const productIcon = isRestaurant ? "fast-food" : "cube";
 
   const isOutOfStock = (item: any) =>
     item.stockQuantity != null && item.stockQuantity <= 0;
@@ -112,7 +114,7 @@ export default function RestaurantDetailScreen() {
               {/* Restaurant Hero */}
               <View style={styles.hero}>
                 <View style={styles.heroImage}>
-                  <Ionicons name="restaurant" size={48} color={Colors.primary} />
+                  <Ionicons name={storeIcon} size={48} color={Colors.primary} />
                 </View>
                 <View style={styles.heroInfo}>
                   <Text style={styles.restaurantName}>{restaurant.name}</Text>
@@ -203,7 +205,7 @@ export default function RestaurantDetailScreen() {
                 </View>
                 <View style={styles.menuItemRight}>
                   <View style={styles.menuItemImagePlaceholder}>
-                    <Ionicons name="fast-food" size={24} color={Colors.primary} />
+                    <Ionicons name={productIcon} size={24} color={Colors.primary} />
                     {inCart && (
                       <View style={styles.inCartBadge}>
                         <Text style={styles.inCartBadgeText}>{inCart.quantity}</Text>
