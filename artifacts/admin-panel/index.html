@@ -87,6 +87,8 @@
     <button data-tab="restaurants">Magasins</button>
     <button data-tab="users">Utilisateurs</button>
     <button data-tab="drivers">Livreurs</button>
+    <button data-tab="merchants">Boutiques (KYC)</button>
+    <button data-tab="kyc">Vérifications</button>
   </nav>
   <main id="view"><div class="loading">Chargement…</div></main>
 </div>
@@ -144,7 +146,54 @@ async function render() {
     if (S.tab === "restaurants") return renderRestaurants(v);
     if (S.tab === "users") return renderUsers(v);
     if (S.tab === "drivers") return renderDrivers(v);
+    if (S.tab === "merchants") return renderMerchants(v);
+    if (S.tab === "kyc") return renderKyc(v);
   } catch (e) { v.innerHTML = `<div class="empty">Erreur : ${esc(e.message)}</div>`; }
+}
+
+async function renderMerchants(v) {
+  const rows = await api("/admin/merchants");
+  const kycColor = s => s === "approved" ? "#34C759" : s === "rejected" ? "#FF3B30" : "#FF9F0A";
+  v.innerHTML = rows.length ? `<div class="tablewrap"><table>
+    <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Statut</th><th></th></tr></thead>
+    <tbody>${rows.map(m=>`<tr>
+      <td>${esc(m.name)}</td><td>${esc(m.email)}</td><td>${esc(m.phone||"—")}</td>
+      <td>${pill(m.merchantStatus||"—", kycColor(m.merchantStatus))}</td>
+      <td>${m.merchantStatus!=="approved"?`<button class="act green" data-mapprove="${m.id}">Approuver</button> `:""}${m.merchantStatus!=="rejected"?`<button class="act red" data-mreject="${m.id}">Rejeter</button>`:""}</td>
+    </tr>`).join("")}</tbody></table></div>` : '<div class="empty">Aucune boutique</div>';
+  const wire = (attr, path) => v.querySelectorAll(`button[${attr}]`).forEach(b => b.onclick = async () => {
+    b.disabled=true; try { await api(`/admin/merchants/${b.getAttribute(attr)}/${path}`,{method:"PATCH"}); render(); } catch(e){ alert(e.message); b.disabled=false; }
+  });
+  wire("data-mapprove","approve"); wire("data-mreject","reject");
+}
+
+async function renderKyc(v) {
+  v.innerHTML = `<div class="toolbar"><select id="kst">
+    ${["pending","approved","rejected"].map(s=>`<option value="${s}">${s}</option>`).join("")}
+  </select></div><div id="kt"></div>`;
+  const load = async () => {
+    $("kt").innerHTML = '<div class="loading">Chargement…</div>';
+    const rows = await api("/admin/kyc?status=" + $("kst").value);
+    $("kt").innerHTML = rows.length ? `<div class="tablewrap"><table>
+      <thead><tr><th>Doc</th><th>Type</th><th>Utilisateur</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+      <tbody>${rows.map(d=>`<tr>
+        <td><a href="${esc(d.imageUrl)}" target="_blank"><img src="${esc(d.imageUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/></a></td>
+        <td>${esc(d.type)}</td><td>${esc(d.userName)}<br><span style="color:var(--muted);font-size:11px">${esc(d.userEmail)}</span></td>
+        <td>${esc(d.userRole)}</td>
+        <td>${pill(d.status, d.status==="approved"?"#34C759":d.status==="rejected"?"#FF3B30":"#FF9F0A")}</td>
+        <td>${d.status!=="approved"?`<button class="act green" data-kapprove="${d.id}">Valider</button> `:""}${d.status!=="rejected"?`<button class="act red" data-kreject="${d.id}">Refuser</button>`:""}</td>
+      </tr>`).join("")}</tbody></table></div>` : '<div class="empty">Aucun document</div>';
+    const review = (attr, action) => $("kt").querySelectorAll(`button[${attr}]`).forEach(b => b.onclick = async () => {
+      b.disabled=true;
+      try {
+        const note = action==="rejected" ? (prompt("Raison du refus (optionnel) :") || undefined) : undefined;
+        await api(`/admin/kyc/${b.getAttribute(attr)}`,{method:"PATCH",body:JSON.stringify({action, note})});
+        load();
+      } catch(e){ alert(e.message); b.disabled=false; }
+    });
+    review("data-kapprove","approved"); review("data-kreject","rejected");
+  };
+  $("kst").onchange = load; await load();
 }
 
 async function renderDashboard(v) {
