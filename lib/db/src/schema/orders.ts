@@ -77,6 +77,7 @@ export const ordersTable = pgTable("orders", {
   promoCode: text("promo_code"),
   discountAmount: real("discount_amount").notNull().default(0),
   tip: real("tip").notNull().default(0), // driver tip, added to total
+  commission: real("commission").notNull().default(0), // platform cut (on subtotal)
   scheduledFor: timestamp("scheduled_for"), // null = ASAP; else deliver-at time
   cashConfirmed: boolean("cash_confirmed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),

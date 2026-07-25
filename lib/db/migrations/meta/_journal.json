@@ -64,6 +64,13 @@
       "when": 1785019048170,
       "tag": "0008_perpetual_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785019316995,
+      "tag": "0009_wooden_prima",
+      "breakpoints": true
     }
   ]
 }

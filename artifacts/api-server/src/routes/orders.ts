@@ -8,6 +8,7 @@ import { createNotification, notifyAdmins } from "../lib/notify";
 import { recomputeTotals } from "../lib/pricing";
 import { isValidTransition, isClaimable, promoDiscount } from "../lib/orderRules";
 import { getPaymentProvider } from "../lib/payments";
+import { getCommissionPct } from "./settings";
 
 const router = Router();
 
@@ -196,6 +197,10 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   const discountAmount = appliedPromo?.discountAmount ?? 0;
   const total = Math.max(0, subtotal + deliveryFee - discountAmount + tip);
 
+  // Platform commission on the merchandise (net of discount).
+  const commissionPct = await getCommissionPct();
+  const commission = Math.round(Math.max(0, subtotal - discountAmount) * commissionPct / 100);
+
   // If a reference is provided at order creation, mark as submitted immediately
   const initialPaymentStatus = paymentMethod === "mobile_money" && paymentReference
     ? "submitted"
@@ -250,6 +255,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
           promoCode: appliedPromo?.code || null,
           discountAmount,
           tip,
+          commission,
           scheduledFor,
         })
         .returning();

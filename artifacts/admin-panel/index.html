@@ -199,11 +199,12 @@ async function renderKyc(v) {
 
 async function renderDashboard(v) {
   const s = await api("/admin/stats");
-  let rate = "";
-  try { rate = (await api("/admin/settings")).usdRate ?? ""; } catch {}
+  let rate = "", commissionPct = "";
+  try { const set = await api("/admin/settings"); rate = set.usdRate ?? ""; commissionPct = set.commissionPct ?? ""; } catch {}
   const cards = [
     ["Commandes totales", s.totalOrders], ["Livrées", s.deliveredOrders], ["Actives", s.activeOrders],
-    ["Revenu", CDF(s.revenue), true], ["Magasins", s.totalRestaurants], ["Clients", s.totalCustomers],
+    ["Revenu (GMV)", CDF(s.revenue), true], ["Commission (revenu plateforme)", CDF(s.commission), true],
+    ["Magasins", s.totalRestaurants], ["Clients", s.totalCustomers],
     ["Livreurs", s.totalDrivers], ["Livreurs en attente", s.pendingDrivers], ["Paiements en attente", s.pendingPayments],
   ];
   v.innerHTML = `<div class="cards">${cards.map(([k,val,a])=>`<div class="card"><div class="k">${k}</div><div class="v ${a?'accent':''}">${val}</div></div>`).join("")}</div>
@@ -213,10 +214,22 @@ async function renderDashboard(v) {
         <input id="rate" type="number" value="${esc(rate)}" style="flex:1;height:42px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:0 12px" />
         <button class="act green" id="saveRate">Enregistrer</button>
       </div>
+    </div>
+    <div class="card" style="margin-top:16px;max-width:420px">
+      <div class="k">Commission plateforme (%)</div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <input id="comm" type="number" min="0" max="100" value="${esc(commissionPct)}" style="flex:1;height:42px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:0 12px" />
+        <button class="act green" id="saveComm">Enregistrer</button>
+      </div>
     </div>`;
   $("saveRate").onclick = async () => {
     const b = $("saveRate"); b.disabled = true;
     try { await api("/admin/settings", { method:"PATCH", body: JSON.stringify({ usdRate: Number($("rate").value) }) }); b.textContent = "Enregistré ✓"; }
+    catch(e){ alert(e.message); b.disabled = false; }
+  };
+  $("saveComm").onclick = async () => {
+    const b = $("saveComm"); b.disabled = true;
+    try { await api("/admin/settings", { method:"PATCH", body: JSON.stringify({ commissionPct: Number($("comm").value) }) }); b.textContent = "Enregistré ✓"; }
     catch(e){ alert(e.message); b.disabled = false; }
   };
 }
