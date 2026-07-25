@@ -152,7 +152,7 @@ export interface CreateOrderPayload {
   restaurantId: number;
   items: Array<{ menuItemId: number; quantity: number }>;
   deliveryAddress: string;
-  paymentMethod: "cash" | "mobile_money";
+  paymentMethod: "cash" | "mobile_money" | "card";
   paymentProvider?: string;
   paymentReference?: string;
   paymentPhone?: string;
@@ -267,7 +267,7 @@ export const orderApi = {
 
   /** Initiate an automated mobile-money charge; provider prompts the phone and
    *  confirms via webhook. Poll orderApi.get(id).paymentStatus for the result. */
-  pay: (orderId: number, payload: { phone: string; channel: "M-Pesa" | "Airtel Money" }) =>
+  pay: (orderId: number, payload: { phone?: string; channel: "M-Pesa" | "Airtel Money" | "Card" }) =>
     request<{ transactionId: string; status: string; message: string; order: any }>(
       `/orders/${orderId}/pay`, { method: "POST", body: JSON.stringify(payload) },
     ),

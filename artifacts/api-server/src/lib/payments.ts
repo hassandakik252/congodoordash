@@ -15,8 +15,8 @@ export type PaymentOutcome = "pending" | "confirmed" | "failed";
 export interface InitiateInput {
   orderId: number;
   amount: number;          // CDF
-  phone: string;           // payer MSISDN
-  channel: "M-Pesa" | "Airtel Money";
+  phone: string;           // payer MSISDN (empty for card)
+  channel: "M-Pesa" | "Airtel Money" | "Card";
 }
 
 export interface InitiateResult {

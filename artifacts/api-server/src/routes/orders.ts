@@ -45,7 +45,7 @@ const createOrderSchema = z.object({
     quantity: z.number().int().positive(),
   })).min(1),
   deliveryAddress: z.string().min(1),
-  paymentMethod: z.enum(["cash", "mobile_money"]),
+  paymentMethod: z.enum(["cash", "mobile_money", "card"]),
   paymentProvider: z.string().optional(),   // "M-Pesa" | "Airtel Money"
   paymentReference: z.string().optional(),  // optional at order time; can be submitted later
   paymentPhone: z.string().optional(),
@@ -64,8 +64,8 @@ const submitPaymentSchema = z.object({
 });
 
 const initiatePaymentSchema = z.object({
-  phone: z.string().min(1),
-  channel: z.enum(["M-Pesa", "Airtel Money"]),
+  phone: z.string().optional(),   // required for mobile money, not for card
+  channel: z.enum(["M-Pesa", "Airtel Money", "Card"]),
 });
 
 // GET /orders — role-filtered list, newest first
@@ -771,8 +771,12 @@ router.post("/:id/pay", requireAuth, requireRole("customer"), async (req: AuthRe
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "not_found", message: "Order not found" }); return; }
   if (order.customerId !== req.user!.id) { res.status(403).json({ error: "forbidden", message: "Not your order" }); return; }
-  if (order.paymentMethod !== "mobile_money") {
-    res.status(400).json({ error: "not_mobile_money", message: "This order is not a mobile money order" });
+  if (order.paymentMethod !== "mobile_money" && order.paymentMethod !== "card") {
+    res.status(400).json({ error: "not_payable", message: "This order is not paid online" });
+    return;
+  }
+  if (parsed.data.channel !== "Card" && !parsed.data.phone) {
+    res.status(400).json({ error: "phone_required", message: "Le numéro de téléphone est requis pour Mobile Money." });
     return;
   }
   if (!["pending", "submitted", "failed"].includes(order.paymentStatus)) {
@@ -785,7 +789,7 @@ router.post("/:id/pay", requireAuth, requireRole("customer"), async (req: AuthRe
     result = await getPaymentProvider().initiate({
       orderId: id,
       amount: order.total,
-      phone: parsed.data.phone,
+      phone: parsed.data.phone ?? "",
       channel: parsed.data.channel,
     });
   } catch (err) {
@@ -798,7 +802,7 @@ router.post("/:id/pay", requireAuth, requireRole("customer"), async (req: AuthRe
     .set({
       paymentStatus: "submitted",
       paymentProvider: parsed.data.channel,
-      paymentPhone: parsed.data.phone,
+      paymentPhone: parsed.data.phone ?? null,
       paymentReference: result.transactionId,
       paymentRequestedAt: new Date(),
       updatedAt: new Date(),
