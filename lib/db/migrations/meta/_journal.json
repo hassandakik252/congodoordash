@@ -36,6 +36,13 @@
       "when": 1785016250342,
       "tag": "0004_ambiguous_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785016448886,
+      "tag": "0005_odd_vanisher",
+      "breakpoints": true
     }
   ]
 }

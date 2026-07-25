@@ -111,6 +111,14 @@ export const restaurantApi = {
 // Vertical-neutral alias; prefer `storeApi` in new code.
 export const storeApi = restaurantApi;
 
+// VERIFICATION (email / phone OTP)
+export const verifyApi = {
+  send: (channel: "email" | "phone") =>
+    request<{ ok: boolean; devCode?: string }>("/verify/send", { method: "POST", body: JSON.stringify({ channel }) }),
+  confirm: (channel: "email" | "phone", code: string) =>
+    request<{ ok: boolean; verified: boolean }>("/verify/confirm", { method: "POST", body: JSON.stringify({ channel, code }) }),
+};
+
 // SETTINGS
 export const settingsApi = {
   public: () => request<{ baseCurrency: string; currencies: string[]; usdRate: number }>("/settings/public"),
