@@ -24,6 +24,34 @@ async function seed() {
   }).returning();
   console.log(`Created system owner: ${owner.email}`);
 
+  const demoCustomerHash = await bcrypt.hash("customer1234", 10);
+  const [customer] = await db.insert(usersTable).values({
+    email: "customer@deliverlbh.com",
+    passwordHash: demoCustomerHash,
+    name: "Client Démo",
+    phone: "+243810000010",
+    role: "customer",
+    address: "Avenue des Savonniers, Lubumbashi",
+    savedAddresses: [
+      { label: "Maison", address: "Avenue des Savonniers, Lubumbashi" },
+      { label: "Bureau", address: "Boulevard M'siri, Lubumbashi" },
+    ],
+  }).returning();
+  console.log(`Created demo customer: ${customer.email}`);
+
+  const demoDriverHash = await bcrypt.hash("driver1234", 10);
+  const [driver] = await db.insert(usersTable).values({
+    email: "driver@deliverlbh.com",
+    passwordHash: demoDriverHash,
+    name: "Livreur Démo",
+    phone: "+243810000011",
+    role: "driver",
+    driverStatus: "approved",
+    vehicleType: "Moto",
+    address: "Avenue des Sports, Lubumbashi",
+  }).returning();
+  console.log(`Created approved demo driver: ${driver.email}`);
+
   // Create restaurants
   const restaurants = await db.insert(restaurantsTable).values([
     {
