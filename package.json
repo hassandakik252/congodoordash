@@ -10,6 +10,10 @@
     "test": "pnpm -r --if-present run test"
   },
   "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "prettier": "^3.8.1",
     "tsx": "catalog:",
