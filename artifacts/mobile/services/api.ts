@@ -1,6 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+// On web the Metro dev server proxies /api → localhost:5000 (see metro.config.js),
+// so we use a relative path and avoid CORS entirely.
+// On native (Expo Go / device build) we use the full HTTPS URL.
+const BASE =
+  Platform.OS === "web"
+    ? "/api"
+    : `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
 async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem("auth_token");
