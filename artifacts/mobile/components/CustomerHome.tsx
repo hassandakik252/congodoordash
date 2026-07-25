@@ -11,7 +11,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useLang } from "@/context/LanguageContext";
 import { restaurantApi } from "@/services/api";
-import { formatCurrency, getGreeting, RESTAURANT_CATEGORIES } from "@/utils/format";
+import { formatCurrency, getGreeting, RESTAURANT_CATEGORIES, VERTICALS } from "@/utils/format";
 
 export default function CustomerHome() {
   const insets = useSafeAreaInsets();
@@ -20,6 +20,8 @@ export default function CustomerHome() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeVertical, setActiveVertical] = useState("restaurant");
+  const isRestaurant = activeVertical === "restaurant";
 
   // Debounce search input — only fire query 400ms after user stops typing
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,13 +32,20 @@ export default function CustomerHome() {
   }, [search]);
 
   const { data: restaurants, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["restaurants", activeCategory, debouncedSearch],
-    queryFn: () => restaurantApi.list(
-      activeCategory !== "all"
-        ? { category: activeCategory, search: debouncedSearch || undefined }
-        : { search: debouncedSearch || undefined }
-    ),
+    queryKey: ["restaurants", activeVertical, activeCategory, debouncedSearch],
+    queryFn: () => restaurantApi.list({
+      vertical: activeVertical,
+      // Category chips only apply to restaurants
+      category: isRestaurant && activeCategory !== "all" ? activeCategory : undefined,
+      search: debouncedSearch || undefined,
+    }),
   });
+
+  // Switching vertical resets the (restaurant-only) category filter
+  function selectVertical(id: string) {
+    setActiveVertical(id);
+    setActiveCategory("all");
+  }
 
   const greeting = getGreeting(language);
   const firstName = user?.name?.split(" ")[0] || "";
@@ -56,6 +65,30 @@ export default function CustomerHome() {
           <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
         </Pressable>
       </View>
+
+      {/* Vertical switcher (Food / Grocery / Pharmacy / Shops / Drinks) */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.verticalsRow}
+        style={styles.verticalsScroll}
+      >
+        {VERTICALS.map(v => {
+          const active = activeVertical === v.id;
+          return (
+            <Pressable
+              key={v.id}
+              style={[styles.verticalChip, active && styles.verticalChipActive]}
+              onPress={() => selectVertical(v.id)}
+            >
+              <Ionicons name={v.icon as any} size={18} color={active ? "#fff" : Colors.primary} />
+              <Text style={[styles.verticalLabel, active && styles.verticalLabelActive]}>
+                {language === "fr" ? v.labelFr : v.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       {/* Search */}
       <View style={styles.searchRow}>
@@ -88,7 +121,8 @@ export default function CustomerHome() {
         scrollEnabled={!!(restaurants && restaurants.length > 0)}
         ListHeaderComponent={
           <>
-            {/* Categories */}
+            {/* Categories (restaurants only) */}
+            {isRestaurant && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -111,9 +145,16 @@ export default function CustomerHome() {
                 </Pressable>
               ))}
             </ScrollView>
+            )}
 
             <Text style={styles.sectionTitle}>
-              {search ? `"${search}"` : activeCategory === "all" ? t("allRestaurants") : activeCategory}
+              {search
+                ? `"${search}"`
+                : isRestaurant
+                  ? (activeCategory === "all" ? t("allRestaurants") : activeCategory)
+                  : (language === "fr"
+                      ? VERTICALS.find(v => v.id === activeVertical)?.labelFr
+                      : VERTICALS.find(v => v.id === activeVertical)?.label)}
             </Text>
 
             {isLoading && (
@@ -126,9 +167,11 @@ export default function CustomerHome() {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.empty}>
-              <Ionicons name="restaurant-outline" size={56} color={Colors.textMuted} />
+              <Ionicons name={(VERTICALS.find(v => v.id === activeVertical)?.icon ?? "storefront") as any} size={56} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>
-                {language === "fr" ? "Aucun restaurant trouvé" : "No restaurants found"}
+                {isRestaurant
+                  ? (language === "fr" ? "Aucun restaurant trouvé" : "No restaurants found")
+                  : (language === "fr" ? "Aucun magasin trouvé" : "No stores found")}
               </Text>
             </View>
           ) : null
@@ -140,7 +183,7 @@ export default function CustomerHome() {
           >
             {/* Placeholder image area */}
             <View style={styles.cardImage}>
-              <Ionicons name="restaurant" size={36} color={Colors.primary} />
+              <Ionicons name={(VERTICALS.find(v => v.id === (item.vertical ?? "restaurant"))?.icon ?? "storefront") as any} size={36} color={Colors.primary} />
               <View style={[styles.statusPill, { backgroundColor: item.isOpen ? Colors.success + "22" : Colors.error + "22" }]}>
                 <Text style={[styles.statusPillText, { color: item.isOpen ? Colors.success : Colors.error }]}>
                   {item.isOpen ? t("open") : t("closed")}
@@ -194,6 +237,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: Colors.border,
   },
+  verticalsScroll: { flexGrow: 0 },
+  verticalsRow: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12, gap: 8 },
+  verticalChip: {
+    flexDirection: "row", alignItems: "center", gap: 7,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  verticalChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  verticalLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  verticalLabelActive: { color: "#fff" },
   searchRow: { paddingHorizontal: 20, paddingBottom: 12 },
   searchBar: {
     flexDirection: "row", alignItems: "center", gap: 10,

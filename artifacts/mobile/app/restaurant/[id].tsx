@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  View, Text, StyleSheet, FlatList, Pressable,
+  View, Text, StyleSheet, FlatList, Pressable, TextInput,
   Platform, ActivityIndicator, Alert, SectionList,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -12,14 +12,15 @@ import Colors from "@/constants/colors";
 import { useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
 import { restaurantApi } from "@/services/api";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, unitSuffix } from "@/utils/format";
 
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { t } = useLang();
+  const { t, language } = useLang();
   const { addItem, items, itemCount, total, restaurantId } = useCart();
   const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+  const [search, setSearch] = useState("");
 
   const numericId = id ? Number(id) : NaN;
 
@@ -38,8 +39,23 @@ export default function RestaurantDetailScreen() {
   const restaurant = restaurantQuery.data;
   const menuItems = menuQuery.data || [];
 
-  // Group menu items by category
-  const grouped = menuItems.reduce((acc: Record<string, any[]>, item: any) => {
+  // Non-restaurant stores (grocery/retail/pharmacy) get an in-store search box.
+  const isRestaurant = !restaurant?.vertical || restaurant.vertical === "restaurant";
+
+  const isOutOfStock = (item: any) =>
+    item.stockQuantity != null && item.stockQuantity <= 0;
+
+  // Client-side search over the loaded catalog (name / brand). For very large
+  // catalogs the paginated /stores/:id/products endpoint (storeApi.searchProducts)
+  // should replace this — wired in the API layer, ready to adopt.
+  const q = search.trim().toLowerCase();
+  const visibleItems = q
+    ? menuItems.filter((i: any) =>
+        i.name?.toLowerCase().includes(q) || i.brand?.toLowerCase().includes(q))
+    : menuItems;
+
+  // Group items by category (aisle)
+  const grouped = visibleItems.reduce((acc: Record<string, any[]>, item: any) => {
     if (!acc[item.category]) acc[item.category] = [];
     acc[item.category].push(item);
     return acc;
@@ -126,6 +142,26 @@ export default function RestaurantDetailScreen() {
                 </View>
               </View>
 
+              {/* In-store catalog search (grocery / retail / pharmacy) */}
+              {!isRestaurant && menuItems.length > 0 && (
+                <View style={styles.storeSearchBar}>
+                  <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+                  <TextInput
+                    style={styles.storeSearchInput}
+                    value={search}
+                    onChangeText={setSearch}
+                    placeholder={language === "fr" ? "Rechercher un produit" : "Search products"}
+                    placeholderTextColor={Colors.placeholder}
+                    returnKeyType="search"
+                  />
+                  {!!search && (
+                    <Pressable onPress={() => setSearch("")}>
+                      <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
               {menuQuery.isLoading && <View style={styles.loadingArea}><ActivityIndicator color={Colors.primary} /></View>}
               {sections.length === 0 && !menuQuery.isLoading && (
                 <View style={styles.empty}>
@@ -141,14 +177,29 @@ export default function RestaurantDetailScreen() {
           renderItem={({ item }) => {
             const inCart = items.find(i => i.menuItemId === item.id);
             const justAdded = addedItems.has(item.id);
+            const outOfStock = isOutOfStock(item);
+            const available = item.isAvailable && !outOfStock;
+            const lowStock = item.stockQuantity != null && item.stockQuantity > 0 && item.stockQuantity <= 5;
             return (
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <Text style={styles.menuItemName}>{item.name}</Text>
+                  {!!item.brand && <Text style={styles.menuItemBrand}>{item.brand}</Text>}
                   {item.description && (
                     <Text style={styles.menuItemDesc} numberOfLines={2}>{item.description}</Text>
                   )}
-                  <Text style={styles.menuItemPrice}>{formatCurrency(item.price)}</Text>
+                  <Text style={styles.menuItemPrice}>
+                    {formatCurrency(item.price)}
+                    <Text style={styles.unitSuffix}>{unitSuffix(item.unit, language)}</Text>
+                  </Text>
+                  {outOfStock && (
+                    <Text style={styles.outOfStock}>{language === "fr" ? "Rupture de stock" : "Out of stock"}</Text>
+                  )}
+                  {!outOfStock && lowStock && (
+                    <Text style={styles.lowStock}>
+                      {language === "fr" ? `Plus que ${item.stockQuantity} en stock` : `Only ${item.stockQuantity} left`}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.menuItemRight}>
                   <View style={styles.menuItemImagePlaceholder}>
@@ -163,11 +214,11 @@ export default function RestaurantDetailScreen() {
                     style={({ pressed }) => [
                       styles.addBtn,
                       justAdded && styles.addBtnSuccess,
-                      !item.isAvailable && styles.addBtnDisabled,
+                      !available && styles.addBtnDisabled,
                       pressed && { opacity: 0.8 },
                     ]}
-                    onPress={() => item.isAvailable && handleAddToCart(item)}
-                    disabled={!item.isAvailable}
+                    onPress={() => available && handleAddToCart(item)}
+                    disabled={!available}
                   >
                     <Ionicons
                       name={justAdded ? "checkmark" : "add"}
@@ -253,8 +304,19 @@ const styles = StyleSheet.create({
   },
   menuItemLeft: { flex: 1, marginRight: 12 },
   menuItemName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginBottom: 4 },
+  menuItemBrand: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary, marginBottom: 4 },
   menuItemDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginBottom: 8 },
   menuItemPrice: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
+  unitSuffix: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  outOfStock: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.error, marginTop: 6 },
+  lowStock: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.accent, marginTop: 6 },
+  storeSearchBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    marginHorizontal: 20, marginBottom: 8,
+    backgroundColor: Colors.surface, borderRadius: 14, paddingHorizontal: 14, height: 48,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  storeSearchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textPrimary },
   menuItemRight: { alignItems: "center", gap: 8 },
   menuItemImagePlaceholder: {
     width: 72, height: 72, borderRadius: 14,

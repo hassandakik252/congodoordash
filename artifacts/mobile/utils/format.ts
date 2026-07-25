@@ -27,6 +27,24 @@ export function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
+// Store verticals shown in the home switcher. `id` matches the server `vertical`
+// enum; "restaurant" is the default landing vertical.
+export const VERTICALS = [
+  { id: "restaurant", label: "Food", labelFr: "Restos", icon: "restaurant" },
+  { id: "grocery", label: "Grocery", labelFr: "Épicerie", icon: "basket" },
+  { id: "pharmacy", label: "Pharmacy", labelFr: "Pharmacie", icon: "medkit" },
+  { id: "retail", label: "Shops", labelFr: "Boutiques", icon: "bag-handle" },
+  { id: "drinks", label: "Drinks", labelFr: "Boissons", icon: "beer" },
+];
+
+// Short unit suffix for a product price, e.g. "/ kg". Restaurants sell "each"
+// (no suffix). Grocery/retail may sell by weight or pack.
+export function unitSuffix(unit?: string, lang: "en" | "fr" = "fr"): string {
+  if (!unit || unit === "each") return "";
+  const map: Record<string, string> = { kg: "kg", g: "g", L: "L", pack: lang === "fr" ? "paquet" : "pack" };
+  return ` / ${map[unit] ?? unit}`;
+}
+
 export const RESTAURANT_CATEGORIES = [
   { id: "all", label: "All", labelFr: "Tout", icon: "grid" },
   { id: "Congolais", label: "Congolese", labelFr: "Congolais", icon: "flame" },

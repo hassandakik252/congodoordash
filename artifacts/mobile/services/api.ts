@@ -63,17 +63,33 @@ export const userApi = {
     }),
 };
 
-// RESTAURANTS
+// STORES (was "restaurants" — endpoints kept at /restaurants alias server-side)
 export const restaurantApi = {
-  list: (params?: { category?: string; search?: string }) => {
+  list: (params?: { category?: string; search?: string; vertical?: string }) => {
     const qs = new URLSearchParams();
     if (params?.category) qs.set("category", params.category);
     if (params?.search) qs.set("search", params.search);
+    if (params?.vertical && params.vertical !== "restaurant") qs.set("vertical", params.vertical);
     const q = qs.toString();
     return request<any[]>(`/restaurants${q ? `?${q}` : ""}`);
   },
   get: (id: number) => request<any>(`/restaurants/${id}`),
   getMenu: (id: number) => request<any[]>(`/restaurants/${id}/menu`),
+  // Paginated, searchable catalog for large grocery/retail/pharmacy stores.
+  searchProducts: (
+    storeId: number,
+    params?: { search?: string; categoryId?: number; page?: number; pageSize?: number },
+  ) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set("search", params.search);
+    if (params?.categoryId != null) qs.set("categoryId", String(params.categoryId));
+    if (params?.page != null) qs.set("page", String(params.page));
+    if (params?.pageSize != null) qs.set("pageSize", String(params.pageSize));
+    const q = qs.toString();
+    return request<{ items: any[]; page: number; pageSize: number; total: number; hasMore: boolean }>(
+      `/stores/${storeId}/products${q ? `?${q}` : ""}`,
+    );
+  },
   create: (body: any) =>
     request<any>("/restaurants", { method: "POST", body: JSON.stringify(body) }),
   addMenuItem: (restaurantId: number, body: any) =>
@@ -91,6 +107,9 @@ export const restaurantApi = {
   deleteMenuItem: (restaurantId: number, itemId: number) =>
     request<any>(`/restaurants/${restaurantId}/menu/${itemId}`, { method: "DELETE" }),
 };
+
+// Vertical-neutral alias; prefer `storeApi` in new code.
+export const storeApi = restaurantApi;
 
 // ANALYTICS (admin)
 export const analyticsApi = {
