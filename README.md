@@ -169,4 +169,14 @@ eas submit --profile production                      # upload to App Store / Pla
 ```bash
 pnpm run typecheck   # tsc --build across project references
 pnpm run build       # typecheck, then per-package builds
+pnpm test            # unit tests (no DB) — pricing, order rules, hours, payments
+```
+
+**Integration tests** (real API against a throwaway Postgres) are DB-gated:
+
+```bash
+createdb deliverlbh_test
+DATABASE_URL=postgresql://.../deliverlbh_test pnpm --filter @workspace/db run migrate
+DATABASE_URL=postgresql://.../deliverlbh_test JWT_SECRET=test PORT=0 \
+  pnpm --filter @workspace/api-server run test:integration
 ```
