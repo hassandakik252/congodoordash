@@ -1,0 +1,294 @@
+import React, { useState } from "react";
+import {
+  View, Text, StyleSheet, FlatList, Pressable,
+  Platform, ActivityIndicator, Alert, SectionList,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
+import Colors from "@/constants/colors";
+import { useCart } from "@/context/CartContext";
+import { useLang } from "@/context/LanguageContext";
+import { restaurantApi } from "@/services/api";
+import { formatCurrency } from "@/utils/format";
+
+export default function RestaurantDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
+  const { t } = useLang();
+  const { addItem, items, itemCount, total, restaurantId } = useCart();
+  const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+
+  const numericId = id ? Number(id) : NaN;
+
+  const restaurantQuery = useQuery({
+    queryKey: ["restaurant", numericId],
+    queryFn: () => restaurantApi.get(numericId),
+    enabled: !isNaN(numericId),
+  });
+
+  const menuQuery = useQuery({
+    queryKey: ["menu", numericId],
+    queryFn: () => restaurantApi.getMenu(numericId),
+    enabled: !isNaN(numericId),
+  });
+
+  const restaurant = restaurantQuery.data;
+  const menuItems = menuQuery.data || [];
+
+  // Group menu items by category
+  const grouped = menuItems.reduce((acc: Record<string, any[]>, item: any) => {
+    if (!acc[item.category]) acc[item.category] = [];
+    acc[item.category].push(item);
+    return acc;
+  }, {});
+  const sections = Object.entries(grouped).map(([title, data]) => ({ title, data }));
+
+  const handleAddToCart = (item: any) => {
+    if (!restaurant) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addItem(
+      { menuItemId: item.id, name: item.name, price: item.price, quantity: 1, imageUrl: item.imageUrl },
+      restaurant.id,
+      restaurant.name,
+      restaurant.deliveryFee
+    );
+    setAddedItems(prev => new Set([...prev, item.id]));
+    setTimeout(() => {
+      setAddedItems(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }, 1500);
+  };
+
+  const cartFromHere = restaurantId === numericId;
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+        </Pressable>
+        {cartFromHere && itemCount > 0 && (
+          <Pressable style={styles.cartBubble} onPress={() => router.push("/(tabs)/cart")}>
+            <Ionicons name="cart" size={18} color="#fff" />
+            <Text style={styles.cartBubbleText}>{itemCount}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {restaurantQuery.isLoading ? (
+        <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
+      ) : restaurant ? (
+        <SectionList
+          sections={sections}
+          keyExtractor={item => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : cartFromHere && itemCount > 0 ? 110 : 24) }}
+          ListHeaderComponent={
+            <View>
+              {/* Restaurant Hero */}
+              <View style={styles.hero}>
+                <View style={styles.heroImage}>
+                  <Ionicons name="restaurant" size={48} color={Colors.primary} />
+                </View>
+                <View style={styles.heroInfo}>
+                  <Text style={styles.restaurantName}>{restaurant.name}</Text>
+                  <Text style={styles.restaurantDesc}>{restaurant.description || restaurant.category}</Text>
+                  <View style={styles.metaRow}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="star" size={14} color={Colors.accent} />
+                      <Text style={styles.metaText}>{restaurant.rating?.toFixed(1)}</Text>
+                    </View>
+                    <View style={styles.dot} />
+                    <View style={styles.metaItem}>
+                      <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+                      <Text style={styles.metaText}>{restaurant.deliveryTimeMin} {t("min")}</Text>
+                    </View>
+                    <View style={styles.dot} />
+                    <View style={styles.metaItem}>
+                      <Ionicons name="bicycle-outline" size={14} color={Colors.textMuted} />
+                      <Text style={styles.metaText}>{restaurant.deliveryFee === 0 ? t("free") : formatCurrency(restaurant.deliveryFee)}</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.openBadge, { backgroundColor: restaurant.isOpen ? Colors.success + "22" : Colors.error + "22" }]}>
+                    <View style={[styles.openDot, { backgroundColor: restaurant.isOpen ? Colors.success : Colors.error }]} />
+                    <Text style={[styles.openText, { color: restaurant.isOpen ? Colors.success : Colors.error }]}>
+                      {restaurant.isOpen ? t("open") : t("closed")}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {menuQuery.isLoading && <View style={styles.loadingArea}><ActivityIndicator color={Colors.primary} /></View>}
+              {sections.length === 0 && !menuQuery.isLoading && (
+                <View style={styles.empty}>
+                  <Ionicons name="fast-food-outline" size={48} color={Colors.textMuted} />
+                  <Text style={styles.emptyText}>{t("noItems")}</Text>
+                </View>
+              )}
+            </View>
+          }
+          renderSectionHeader={({ section: { title } }) => (
+            <Text style={styles.categoryHeader}>{title}</Text>
+          )}
+          renderItem={({ item }) => {
+            const inCart = items.find(i => i.menuItemId === item.id);
+            const justAdded = addedItems.has(item.id);
+            return (
+              <View style={styles.menuItem}>
+                <View style={styles.menuItemLeft}>
+                  <Text style={styles.menuItemName}>{item.name}</Text>
+                  {item.description && (
+                    <Text style={styles.menuItemDesc} numberOfLines={2}>{item.description}</Text>
+                  )}
+                  <Text style={styles.menuItemPrice}>{formatCurrency(item.price)}</Text>
+                </View>
+                <View style={styles.menuItemRight}>
+                  <View style={styles.menuItemImagePlaceholder}>
+                    <Ionicons name="fast-food" size={24} color={Colors.primary} />
+                    {inCart && (
+                      <View style={styles.inCartBadge}>
+                        <Text style={styles.inCartBadgeText}>{inCart.quantity}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.addBtn,
+                      justAdded && styles.addBtnSuccess,
+                      !item.isAvailable && styles.addBtnDisabled,
+                      pressed && { opacity: 0.8 },
+                    ]}
+                    onPress={() => item.isAvailable && handleAddToCart(item)}
+                    disabled={!item.isAvailable}
+                  >
+                    <Ionicons
+                      name={justAdded ? "checkmark" : "add"}
+                      size={18}
+                      color="#fff"
+                    />
+                  </Pressable>
+                </View>
+              </View>
+            );
+          }}
+        />
+      ) : (
+        <View style={styles.center}>
+          <Text style={styles.errorText}>{t("error")}</Text>
+        </View>
+      )}
+
+      {/* Floating Cart Bar */}
+      {cartFromHere && itemCount > 0 && (
+        <View style={[styles.cartBar, { bottom: insets.bottom + (Platform.OS === "web" ? 34 : 20) }]}>
+          <Pressable
+            style={({ pressed }) => [styles.cartBarBtn, pressed && { opacity: 0.9 }]}
+            onPress={() => router.push("/(tabs)/cart")}
+          >
+            <View style={styles.cartBarLeft}>
+              <View style={styles.cartBarCount}><Text style={styles.cartBarCountText}>{itemCount}</Text></View>
+              <Text style={styles.cartBarLabel}>{t("viewCart")}</Text>
+            </View>
+            <Text style={styles.cartBarTotal}>{formatCurrency(total)}</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.dark },
+  header: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 16, paddingVertical: 12,
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  cartBubble: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: Colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20,
+  },
+  cartBubbleText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  hero: { padding: 20 },
+  heroImage: {
+    height: 180, backgroundColor: Colors.surface, borderRadius: 20,
+    alignItems: "center", justifyContent: "center", marginBottom: 16,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  heroInfo: { gap: 8 },
+  restaurantName: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.textPrimary },
+  restaurantDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  metaText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  dot: { width: 3, height: 3, borderRadius: 2, backgroundColor: Colors.textMuted },
+  openBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, alignSelf: "flex-start" },
+  openDot: { width: 7, height: 7, borderRadius: 4 },
+  openText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  loadingArea: { paddingVertical: 40, alignItems: "center" },
+  empty: { alignItems: "center", paddingVertical: 40, gap: 12 },
+  emptyText: { fontSize: 16, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  categoryHeader: {
+    fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.textPrimary,
+    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12,
+  },
+  menuItem: {
+    flexDirection: "row", justifyContent: "space-between",
+    marginHorizontal: 16, marginBottom: 14, padding: 14,
+    backgroundColor: Colors.surface, borderRadius: 16,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  menuItemLeft: { flex: 1, marginRight: 12 },
+  menuItemName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginBottom: 4 },
+  menuItemDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginBottom: 8 },
+  menuItemPrice: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
+  menuItemRight: { alignItems: "center", gap: 8 },
+  menuItemImagePlaceholder: {
+    width: 72, height: 72, borderRadius: 14,
+    backgroundColor: Colors.surfaceAlt, alignItems: "center", justifyContent: "center",
+    position: "relative",
+  },
+  inCartBadge: {
+    position: "absolute", top: -6, right: -6,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center",
+  },
+  inCartBadgeText: { color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold" },
+  addBtn: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center",
+  },
+  addBtnSuccess: { backgroundColor: Colors.success },
+  addBtnDisabled: { backgroundColor: Colors.textMuted, opacity: 0.5 },
+  errorText: { fontSize: 16, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  cartBar: {
+    position: "absolute", left: 16, right: 16,
+  },
+  cartBarBtn: {
+    backgroundColor: Colors.primary, borderRadius: 18, paddingVertical: 15, paddingHorizontal: 20,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12,
+    elevation: 8,
+  },
+  cartBarLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  cartBarCount: {
+    width: 26, height: 26, borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
+  },
+  cartBarCountText: { color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold" },
+  cartBarLabel: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  cartBarTotal: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold" },
+});
