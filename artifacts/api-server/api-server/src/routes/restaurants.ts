@@ -7,9 +7,13 @@ import { z } from "zod";
 
 const router = Router();
 
+const verticalValues = ["restaurant", "grocery", "pharmacy", "retail", "drinks"] as const;
+const productUnitValues = ["each", "kg", "g", "L", "pack"] as const;
+
 const createRestaurantSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+  vertical: z.enum(verticalValues).optional().default("restaurant"),
   category: z.string().min(1),
   address: z.string().min(1),
   phone: z.string().min(1),
@@ -25,6 +29,13 @@ const createMenuItemSchema = z.object({
   category: z.string().min(1),
   imageUrl: z.string().optional(),
   isAvailable: z.boolean().optional().default(true),
+  // Grocery / retail / pharmacy inventory fields (optional; ignored by restaurants)
+  categoryId: z.number().int().positive().optional(),
+  stockQuantity: z.number().int().nonnegative().optional(),
+  unit: z.enum(productUnitValues).optional(),
+  sku: z.string().optional(),
+  barcode: z.string().optional(),
+  brand: z.string().optional(),
 });
 
 const updateMenuItemSchema = z.object({
@@ -34,6 +45,12 @@ const updateMenuItemSchema = z.object({
   category: z.string().min(1).optional(),
   imageUrl: z.string().optional(),
   isAvailable: z.boolean().optional(),
+  categoryId: z.number().int().positive().optional(),
+  stockQuantity: z.number().int().nonnegative().optional(),
+  unit: z.enum(productUnitValues).optional(),
+  sku: z.string().optional(),
+  barcode: z.string().optional(),
+  brand: z.string().optional(),
 });
 
 // Helper — verify restaurant is owned by requester
@@ -51,9 +68,12 @@ async function requireOwnership(restaurantId: number, userId: number) {
 
 // GET /restaurants
 router.get("/", async (req, res) => {
-  const { category, search } = req.query as { category?: string; search?: string };
+  const { category, search, vertical } = req.query as { category?: string; search?: string; vertical?: string };
 
   const conditions = [];
+  if (vertical && (verticalValues as readonly string[]).includes(vertical)) {
+    conditions.push(eq(restaurantsTable.vertical, vertical as (typeof verticalValues)[number]));
+  }
   if (category) conditions.push(eq(restaurantsTable.category, category));
   if (search) {
     conditions.push(
@@ -291,6 +311,12 @@ router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), 
   if (parsed.data.category !== undefined) updates.category = parsed.data.category;
   if (parsed.data.imageUrl !== undefined) updates.imageUrl = parsed.data.imageUrl;
   if (parsed.data.isAvailable !== undefined) updates.isAvailable = parsed.data.isAvailable;
+  if (parsed.data.categoryId !== undefined) updates.categoryId = parsed.data.categoryId;
+  if (parsed.data.stockQuantity !== undefined) updates.stockQuantity = parsed.data.stockQuantity;
+  if (parsed.data.unit !== undefined) updates.unit = parsed.data.unit;
+  if (parsed.data.sku !== undefined) updates.sku = parsed.data.sku;
+  if (parsed.data.barcode !== undefined) updates.barcode = parsed.data.barcode;
+  if (parsed.data.brand !== undefined) updates.brand = parsed.data.brand;
 
   const [updated] = await db.update(menuItemsTable)
     .set(updates)

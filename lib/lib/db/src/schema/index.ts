@@ -1,5 +1,6 @@
 export * from "./users";
 export * from "./restaurants";
+export * from "./categories";
 export * from "./menu_items";
 export * from "./orders";
 export * from "./notifications";

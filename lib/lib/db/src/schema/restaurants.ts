@@ -1,11 +1,25 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 
+/**
+ * Store vertical. Drives the customer UI (menu vs. searchable catalog), the
+ * order lifecycle (kitchen prep vs. in-store picking) and merchant tooling.
+ * Existing restaurant rows default to "restaurant" so this change is additive.
+ */
+export const verticalEnum = pgEnum("vertical", [
+  "restaurant",
+  "grocery",
+  "pharmacy",
+  "retail",
+  "drinks",
+]);
+
 export const restaurantsTable = pgTable("restaurants", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id").notNull().references(() => usersTable.id),
+  vertical: verticalEnum("vertical").notNull().default("restaurant"),
   name: text("name").notNull(),
   description: text("description"),
   category: text("category").notNull(),
