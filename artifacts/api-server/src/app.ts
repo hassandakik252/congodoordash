@@ -25,7 +25,19 @@ app.use(
     },
   }),
 );
-app.use(cors());
+// CORS: if CORS_ORIGINS (comma-separated) is set, restrict browser origins to
+// that allowlist; otherwise reflect the request origin (dev default). Native
+// mobile requests send no Origin header and are always allowed.
+const corsOrigins = process.env["CORS_ORIGINS"]
+  ?.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : true,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

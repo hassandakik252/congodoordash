@@ -6,8 +6,16 @@ import { usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { notifyAdmins } from "../lib/notify";
+import { rateLimit } from "../middlewares/rateLimit";
 
 const router = Router();
+
+// Throttle credential endpoints against brute-force: 10 attempts / 15 min / IP.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Trop de tentatives. Réessayez dans quelques minutes.",
+});
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is not set. Server cannot start without it.");
 }
@@ -36,7 +44,7 @@ function sanitizeUser(user: typeof usersTable.$inferSelect) {
   return safe;
 }
 
-router.post("/register", async (req, res) => {
+router.post("/register", authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "validation_error", message: parsed.error.message });
@@ -75,7 +83,7 @@ router.post("/register", async (req, res) => {
   res.status(201).json({ token, user: sanitizeUser(user) });
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "validation_error", message: parsed.error.message });
