@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deliver LBH — Admin</title>
+<style>
+  :root {
+    --bg:#0F0F0F; --surface:#1A1A1A; --surface2:#242424; --border:#2E2E2E;
+    --primary:#FF4500; --accent:#FFA500; --text:#F5F5F5; --muted:#9A9A9A;
+    --green:#34C759; --red:#FF3B30;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  a { color:var(--primary); }
+  button { font-family:inherit; cursor:pointer; }
+  input, select { font-family:inherit; }
+  .hidden { display:none !important; }
+
+  /* Login */
+  #login { max-width:380px; margin:12vh auto; padding:0 20px; }
+  .logo { font-size:26px; font-weight:800; text-align:center; }
+  .logo span { color:var(--primary); }
+  .sub { text-align:center; color:var(--muted); margin:6px 0 26px; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  .field input { width:100%; height:46px; padding:0 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; color:var(--text); font-size:15px; }
+  .btn { width:100%; height:48px; background:var(--primary); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; }
+  .btn:disabled { opacity:.6; }
+  .err { color:var(--red); font-size:13px; margin-top:10px; text-align:center; min-height:18px; }
+
+  /* App shell */
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:5; }
+  header .brand { font-weight:800; font-size:18px; } header .brand span { color:var(--primary); }
+  header .who { color:var(--muted); font-size:13px; margin-right:14px; }
+  .logout { background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 14px; font-size:13px; }
+  nav { display:flex; gap:8px; padding:16px 24px 0; flex-wrap:wrap; }
+  nav button { background:var(--surface); color:var(--muted); border:1px solid var(--border); border-radius:24px; padding:9px 16px; font-size:14px; font-weight:600; }
+  nav button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  main { padding:20px 24px 60px; }
+
+  /* Stat cards */
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; }
+  .card .k { font-size:13px; color:var(--muted); }
+  .card .v { font-size:26px; font-weight:800; margin-top:6px; }
+  .card .v.accent { color:var(--accent); }
+
+  /* Tables */
+  .toolbar { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .toolbar select, .toolbar input { height:40px; background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text); padding:0 12px; font-size:14px; }
+  .tablewrap { overflow-x:auto; border:1px solid var(--border); border-radius:14px; }
+  table { width:100%; border-collapse:collapse; min-width:640px; }
+  th, td { text-align:left; padding:12px 14px; font-size:13px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; background:var(--surface); position:sticky; top:0; }
+  tr:last-child td { border-bottom:none; }
+  .pill { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; }
+  .act { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600; }
+  .act.green { border-color:var(--green); color:var(--green); }
+  .act.red { border-color:var(--red); color:var(--red); }
+  .empty { padding:40px; text-align:center; color:var(--muted); }
+  .loading { padding:30px; text-align:center; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<section id="login">
+  <div class="logo">Deliver <span>LBH</span></div>
+  <div class="sub">Console d'administration</div>
+  <div class="field"><label>URL de l'API</label><input id="apiBase" value="http://localhost:8080/api" /></div>
+  <div class="field"><label>Email</label><input id="email" type="email" value="admin@deliverlbh.com" /></div>
+  <div class="field"><label>Mot de passe</label><input id="password" type="password" placeholder="••••••••" /></div>
+  <button class="btn" id="loginBtn">Se connecter</button>
+  <div class="err" id="loginErr"></div>
+</section>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header>
+    <div class="brand">Deliver <span>LBH</span> · Admin</div>
+    <div><span class="who" id="who"></span><button class="logout" id="logoutBtn">Déconnexion</button></div>
+  </header>
+  <nav id="nav">
+    <button data-tab="dashboard" class="active">Tableau de bord</button>
+    <button data-tab="orders">Commandes</button>
+    <button data-tab="restaurants">Magasins</button>
+    <button data-tab="users">Utilisateurs</button>
+    <button data-tab="drivers">Livreurs</button>
+  </nav>
+  <main id="view"><div class="loading">Chargement…</div></main>
+</div>
+
+<script>
+const S = { base:"", token:"", user:null, tab:"dashboard" };
+const $ = (id) => document.getElementById(id);
+const CDF = (n) => (Math.round(Number(n)||0)).toLocaleString("fr-FR") + " CDF";
+const fdate = (s) => s ? new Date(s).toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—";
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function api(path, opts={}) {
+  const res = await fetch(S.base + path, {
+    ...opts,
+    headers:{ "Content-Type":"application/json", ...(S.token?{Authorization:"Bearer "+S.token}:{}), ...(opts.headers||{}) },
+  });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.message || data.error || ("HTTP "+res.status));
+  return data;
+}
+
+// ---- Login ----
+$("loginBtn").onclick = async () => {
+  const btn = $("loginBtn"); btn.disabled = true; $("loginErr").textContent = "";
+  S.base = $("apiBase").value.trim().replace(/\/$/,"");
+  try {
+    const r = await api("/auth/login", { method:"POST", body:JSON.stringify({ email:$("email").value.trim(), password:$("password").value }) });
+    if (r.user?.role !== "admin") throw new Error("Ce compte n'est pas administrateur.");
+    S.token = r.token; S.user = r.user;
+    $("who").textContent = r.user.email;
+    $("login").classList.add("hidden"); $("app").classList.remove("hidden");
+    render();
+  } catch (e) { $("loginErr").textContent = e.message; }
+  finally { btn.disabled = false; }
+};
+$("password").addEventListener("keydown", e => { if (e.key==="Enter") $("loginBtn").click(); });
+$("logoutBtn").onclick = () => { S.token=""; S.user=null; $("app").classList.add("hidden"); $("login").classList.remove("hidden"); };
+
+// ---- Nav ----
+$("nav").addEventListener("click", e => {
+  const b = e.target.closest("button[data-tab]"); if (!b) return;
+  S.tab = b.dataset.tab;
+  [...$("nav").children].forEach(x => x.classList.toggle("active", x===b));
+  render();
+});
+
+const statusColors = { pending:"#FF9F0A", confirmed:"#30B0C7", preparing:"#FF6B35", ready_for_pickup:"#34C759", picked_up:"#007AFF", delivered:"#34C759", cancelled:"#FF3B30" };
+function pill(text, color){ return `<span class="pill" style="background:${color}22;color:${color}">${esc(text)}</span>`; }
+
+async function render() {
+  const v = $("view"); v.innerHTML = '<div class="loading">Chargement…</div>';
+  try {
+    if (S.tab === "dashboard") return renderDashboard(v);
+    if (S.tab === "orders") return renderOrders(v);
+    if (S.tab === "restaurants") return renderRestaurants(v);
+    if (S.tab === "users") return renderUsers(v);
+    if (S.tab === "drivers") return renderDrivers(v);
+  } catch (e) { v.innerHTML = `<div class="empty">Erreur : ${esc(e.message)}</div>`; }
+}
+
+async function renderDashboard(v) {
+  const s = await api("/admin/stats");
+  const cards = [
+    ["Commandes totales", s.totalOrders], ["Livrées", s.deliveredOrders], ["Actives", s.activeOrders],
+    ["Revenu", CDF(s.revenue), true], ["Magasins", s.totalRestaurants], ["Clients", s.totalCustomers],
+    ["Livreurs", s.totalDrivers], ["Livreurs en attente", s.pendingDrivers], ["Paiements en attente", s.pendingPayments],
+  ];
+  v.innerHTML = `<div class="cards">${cards.map(([k,val,a])=>`<div class="card"><div class="k">${k}</div><div class="v ${a?'accent':''}">${val}</div></div>`).join("")}</div>`;
+}
+
+async function renderOrders(v) {
+  v.innerHTML = `<div class="toolbar"><select id="ost">
+    ${["all","pending","confirmed","preparing","ready_for_pickup","picked_up","delivered","cancelled"].map(s=>`<option value="${s}">${s}</option>`).join("")}
+  </select></div><div id="ot"></div>`;
+  const load = async () => {
+    $("ot").innerHTML = '<div class="loading">Chargement…</div>';
+    const st = $("ost").value;
+    const rows = await api("/admin/orders" + (st!=="all"?`?status=${st}`:""));
+    $("ot").innerHTML = rows.length ? `<div class="tablewrap"><table>
+      <thead><tr><th>#</th><th>Client</th><th>Magasin</th><th>Statut</th><th>Paiement</th><th>Total</th><th>Date</th></tr></thead>
+      <tbody>${rows.map(o=>`<tr>
+        <td>#${o.id}</td><td>${esc(o.customerName)}</td><td>${esc(o.restaurantName)}</td>
+        <td>${pill(o.status, statusColors[o.status]||"#888")}</td>
+        <td>${esc(o.paymentMethod)} · ${esc(o.paymentStatus)}</td>
+        <td>${CDF(o.total)}</td><td>${fdate(o.createdAt)}</td></tr>`).join("")}</tbody></table></div>`
+      : '<div class="empty">Aucune commande</div>';
+  };
+  $("ost").onchange = load; await load();
+}
+
+async function renderRestaurants(v) {
+  const rows = await api("/admin/restaurants");
+  v.innerHTML = rows.length ? `<div class="tablewrap"><table>
+    <thead><tr><th>Nom</th><th>Catégorie</th><th>Propriétaire</th><th>Ouvert</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td>${esc(r.name)}</td><td>${esc(r.category)}</td><td>${esc(r.ownerName||r.ownerEmail||"—")}</td>
+      <td>${r.isOpen?pill("Ouvert","#34C759"):pill("Fermé","#FF3B30")}</td>
+      <td><button class="act" data-toggle="${r.id}">${r.isOpen?"Fermer":"Ouvrir"}</button></td></tr>`).join("")}</tbody></table></div>`
+    : '<div class="empty">Aucun magasin</div>';
+  v.querySelectorAll("button[data-toggle]").forEach(b => b.onclick = async () => {
+    b.disabled = true; try { await api(`/admin/restaurants/${b.dataset.toggle}/toggle`, {method:"PATCH"}); render(); } catch(e){ alert(e.message); b.disabled=false; }
+  });
+}
+
+async function renderUsers(v) {
+  v.innerHTML = `<div class="toolbar">
+    <select id="urole">${["all","customer","driver","restaurant_owner"].map(r=>`<option value="${r}">${r}</option>`).join("")}</select>
+    <input id="usearch" placeholder="Rechercher (nom / email)" />
+  </div><div id="ut"></div>`;
+  const load = async () => {
+    $("ut").innerHTML = '<div class="loading">Chargement…</div>';
+    const role = $("urole").value, q = $("usearch").value.trim();
+    const params = new URLSearchParams();
+    if (role!=="all") params.set("role", role);
+    if (q) params.set("search", q);
+    const rows = await api("/admin/users" + (params.toString()?`?${params}`:""));
+    $("ut").innerHTML = rows.length ? `<div class="tablewrap"><table>
+      <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Téléphone</th><th>Actif</th><th></th></tr></thead>
+      <tbody>${rows.map(u=>`<tr>
+        <td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.role)}</td><td>${esc(u.phone||"—")}</td>
+        <td>${u.isActive?pill("Actif","#34C759"):pill("Désactivé","#FF3B30")}</td>
+        <td><button class="act ${u.isActive?'red':'green'}" data-uid="${u.id}">${u.isActive?"Désactiver":"Activer"}</button></td></tr>`).join("")}</tbody></table></div>`
+      : '<div class="empty">Aucun utilisateur</div>';
+    $("ut").querySelectorAll("button[data-uid]").forEach(b => b.onclick = async () => {
+      b.disabled=true; try { await api(`/admin/users/${b.dataset.uid}/toggle`,{method:"PATCH"}); load(); } catch(e){ alert(e.message); b.disabled=false; }
+    });
+  };
+  $("urole").onchange = load; let t; $("usearch").oninput = () => { clearTimeout(t); t=setTimeout(load,350); };
+  await load();
+}
+
+async function renderDrivers(v) {
+  const rows = await api("/admin/drivers");
+  v.innerHTML = rows.length ? `<div class="tablewrap"><table>
+    <thead><tr><th>Nom</th><th>Email</th><th>Véhicule</th><th>Statut</th><th></th></tr></thead>
+    <tbody>${rows.map(d=>`<tr>
+      <td>${esc(d.name)}</td><td>${esc(d.email)}</td><td>${esc(d.vehicleType||"—")}</td>
+      <td>${pill(d.driverStatus||"—", d.driverStatus==="approved"?"#34C759":d.driverStatus==="rejected"?"#FF3B30":"#FF9F0A")}</td>
+      <td>${d.driverStatus!=="approved"?`<button class="act green" data-approve="${d.id}">Approuver</button> `:""}${d.driverStatus!=="rejected"?`<button class="act red" data-reject="${d.id}">Rejeter</button>`:""}</td>
+    </tr>`).join("")}</tbody></table></div>`
+    : '<div class="empty">Aucun livreur</div>';
+  const wire = (attr, path) => v.querySelectorAll(`button[${attr}]`).forEach(b => b.onclick = async () => {
+    b.disabled=true; try { await api(`/admin/drivers/${b.getAttribute(attr)}/${path}`,{method:"PATCH"}); render(); } catch(e){ alert(e.message); b.disabled=false; }
+  });
+  wire("data-approve","approve"); wire("data-reject","reject");
+}
+</script>
+</body>
+</html>
