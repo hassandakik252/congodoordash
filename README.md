@@ -43,8 +43,13 @@ cp .env.example .env
 #    then fill in DATABASE_URL, PORT, JWT_SECRET (generate: openssl rand -hex 32),
 #    and ADMIN_PASSWORD
 
-# 3. Push the schema to your database
-pnpm --filter @workspace/db run push
+# 3. Set up the database schema
+#    Production: apply versioned migrations (from lib/db/migrations)
+pnpm --filter @workspace/db run migrate
+#    Dev shortcut: diff-push the schema directly (no migration history)
+#    pnpm --filter @workspace/db run push
+#    After changing the schema, generate a new migration:
+#    pnpm --filter @workspace/db run generate
 
 # 4. Seed demo stores + menu/products
 pnpm --filter @workspace/api-server exec tsx src/seed.ts
