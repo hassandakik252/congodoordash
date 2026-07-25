@@ -42,13 +42,23 @@ function buildDriverEarningsForDriver(driverId: number) {
 }
 
 function summarise(deliveries: any[]) {
+  const earn = (o: any) => (o.deliveryFee ?? 0) + (o.tip ?? 0); // driver earns fee + tip
+  const cash = deliveries.filter((o: any) => o.paymentMethod === "cash");
+  const nonCash = deliveries.filter((o: any) => o.paymentMethod !== "cash");
+
   const totalDeliveries = deliveries.length;
-  const totalEarnings = deliveries.reduce((s: number, o: any) => s + (o.deliveryFee ?? 0), 0);
-  const totalCashCollected = deliveries
-    .filter((o: any) => o.paymentMethod === "cash")
-    .reduce((s: number, o: any) => s + (o.total ?? 0), 0);
-  const totalOwedToCompany = Math.max(0, totalCashCollected - totalEarnings);
-  return { totalDeliveries, totalEarnings, totalCashCollected, totalOwedToCompany };
+  const totalDeliveryFees = deliveries.reduce((s: number, o: any) => s + (o.deliveryFee ?? 0), 0);
+  const totalTips = deliveries.reduce((s: number, o: any) => s + (o.tip ?? 0), 0);
+  const totalEarnings = totalDeliveryFees + totalTips; // gross driver earnings
+
+  const totalCashCollected = cash.reduce((s: number, o: any) => s + (o.total ?? 0), 0);
+  const cashEarnings = cash.reduce((s: number, o: any) => s + earn(o), 0);
+  // Cash the driver holds beyond their own earnings is owed back to the company.
+  const totalOwedToCompany = Math.max(0, totalCashCollected - cashEarnings);
+  // Earnings on electronically-paid orders the company owes the driver.
+  const netPayable = nonCash.reduce((s: number, o: any) => s + earn(o), 0);
+
+  return { totalDeliveries, totalDeliveryFees, totalTips, totalEarnings, totalCashCollected, totalOwedToCompany, netPayable };
 }
 
 // GET /earnings — driver's own earnings

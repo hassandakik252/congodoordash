@@ -156,6 +156,19 @@ export default function DriverEarnings() {
             </View>
           </View>
 
+          <View style={styles.chipsRow}>
+            <View style={styles.chip}>
+              <Ionicons name="cash-outline" size={18} color={Colors.accent} />
+              <Text style={[styles.chipValue, { color: Colors.accent }]}>{formatCDF(data.totalTips ?? 0)}</Text>
+              <Text style={styles.chipLabel}>Pourboires</Text>
+            </View>
+            <View style={styles.chip}>
+              <Ionicons name="wallet-outline" size={18} color={Colors.success} />
+              <Text style={[styles.chipValue, { color: Colors.success }]}>{formatCDF(data.netPayable ?? 0)}</Text>
+              <Text style={styles.chipLabel}>À recevoir</Text>
+            </View>
+          </View>
+
           {/* Cash Settlement Status */}
           {data.totalCashCollected > 0 && (
             <View style={[
