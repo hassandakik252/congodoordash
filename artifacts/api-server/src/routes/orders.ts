@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { ordersTable, restaurantsTable, menuItemsTable, usersTable, reviewsTable, promoCodesTable } from "@workspace/db/schema";
-import { eq, and, inArray, isNull, desc, sql } from "drizzle-orm";
+import { eq, and, or, inArray, isNull, desc, sql, getTableColumns } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
 import { createNotification, notifyAdmins } from "../lib/notify";
@@ -271,16 +271,26 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   res.status(201).json(order);
 });
 
-// GET /orders/available — orders ready for pickup with no driver, for drivers
+// GET /orders/available — unclaimed orders a driver can take.
+// Restaurants: ready_for_pickup (kitchen done). Grocery/retail/pharmacy/drinks
+// (driver-also-shops): claimable earlier — at confirmed/preparing — so the
+// driver can go shop the order. A `vertical` field is attached for the app.
 router.get("/available", requireAuth, requireRole("driver"), async (req: AuthRequest, res) => {
   const orders = await db
-    .select()
+    .select({ ...getTableColumns(ordersTable), vertical: restaurantsTable.vertical })
     .from(ordersTable)
+    .leftJoin(restaurantsTable, eq(ordersTable.restaurantId, restaurantsTable.id))
     .where(
       and(
-        eq(ordersTable.status, "ready_for_pickup"),
-        isNull(ordersTable.driverId)
-      )
+        isNull(ordersTable.driverId),
+        or(
+          eq(ordersTable.status, "ready_for_pickup"),
+          and(
+            sql`${restaurantsTable.vertical} <> 'restaurant'`,
+            inArray(ordersTable.status, ["confirmed", "preparing"]),
+          ),
+        ),
+      ),
     )
     .orderBy(desc(ordersTable.updatedAt));
 
@@ -354,6 +364,32 @@ router.post("/:id/accept", requireAuth, requireRole("driver"), async (req: AuthR
 
   const driver = req.user!;
 
+  // Look up current status + store vertical to decide claimability.
+  const [existing] = await db
+    .select({ status: ordersTable.status, driverId: ordersTable.driverId, vertical: restaurantsTable.vertical })
+    .from(ordersTable)
+    .leftJoin(restaurantsTable, eq(ordersTable.restaurantId, restaurantsTable.id))
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "not_found", message: "Order not found" });
+    return;
+  }
+
+  // Restaurants: claim only when ready_for_pickup. Other verticals (driver
+  // shops): claim early at confirmed/preparing too. Either way → picked_up,
+  // after which the driver shops (PATCH /pick) and then delivers.
+  const claimable =
+    existing.status === "ready_for_pickup" ||
+    (existing.vertical !== "restaurant" && (existing.status === "confirmed" || existing.status === "preparing"));
+
+  if (!claimable) {
+    res.status(409).json({ error: "not_claimable", message: "Cette commande n'est pas disponible pour le moment." });
+    return;
+  }
+
+  // Atomic claim guarded by the exact current status + no existing driver.
   const updated = await db
     .update(ordersTable)
     .set({
@@ -364,19 +400,14 @@ router.post("/:id/accept", requireAuth, requireRole("driver"), async (req: AuthR
     .where(
       and(
         eq(ordersTable.id, id),
-        eq(ordersTable.status, "ready_for_pickup"),
+        eq(ordersTable.status, existing.status),
         isNull(ordersTable.driverId)
       )
     )
     .returning();
 
   if (updated.length === 0) {
-    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
-    if (!order) {
-      res.status(404).json({ error: "not_found", message: "Order not found" });
-    } else {
-      res.status(409).json({ error: "already_taken", message: "This order was already accepted by another driver" });
-    }
+    res.status(409).json({ error: "already_taken", message: "This order was already accepted by another driver" });
     return;
   }
 
