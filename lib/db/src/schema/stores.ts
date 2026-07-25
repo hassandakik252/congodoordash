@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -36,6 +36,9 @@ export const storesTable = pgTable("restaurants", {
   deliveryFee: real("delivery_fee").notNull().default(2000),
   isOpen: boolean("is_open").notNull().default(true),
   openingHours: text("opening_hours"),
+  // Structured weekly hours for auto open/close. Array of 7 (index 0=Sunday..
+  // 6=Saturday); each is { open: "HH:MM", close: "HH:MM" } or null (closed).
+  businessHours: jsonb("business_hours").$type<Array<{ open: string; close: string } | null> | null>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

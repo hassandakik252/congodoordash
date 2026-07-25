@@ -153,10 +153,10 @@ export default function RestaurantDetailScreen() {
                       <Text style={styles.metaText}>{restaurant.deliveryFee === 0 ? t("free") : formatCurrency(restaurant.deliveryFee)}</Text>
                     </View>
                   </View>
-                  <View style={[styles.openBadge, { backgroundColor: restaurant.isOpen ? Colors.success + "22" : Colors.error + "22" }]}>
-                    <View style={[styles.openDot, { backgroundColor: restaurant.isOpen ? Colors.success : Colors.error }]} />
-                    <Text style={[styles.openText, { color: restaurant.isOpen ? Colors.success : Colors.error }]}>
-                      {restaurant.isOpen ? t("open") : t("closed")}
+                  <View style={[styles.openBadge, { backgroundColor: (restaurant.openNow ?? restaurant.isOpen) ? Colors.success + "22" : Colors.error + "22" }]}>
+                    <View style={[styles.openDot, { backgroundColor: (restaurant.openNow ?? restaurant.isOpen) ? Colors.success : Colors.error }]} />
+                    <Text style={[styles.openText, { color: (restaurant.openNow ?? restaurant.isOpen) ? Colors.success : Colors.error }]}>
+                      {(restaurant.openNow ?? restaurant.isOpen) ? t("open") : t("closed")}
                     </Text>
                   </View>
                 </View>

@@ -184,9 +184,9 @@ export default function CustomerHome() {
             {/* Placeholder image area */}
             <View style={styles.cardImage}>
               <Ionicons name={(VERTICALS.find(v => v.id === (item.vertical ?? "restaurant"))?.icon ?? "storefront") as any} size={36} color={Colors.primary} />
-              <View style={[styles.statusPill, { backgroundColor: item.isOpen ? Colors.success + "22" : Colors.error + "22" }]}>
-                <Text style={[styles.statusPillText, { color: item.isOpen ? Colors.success : Colors.error }]}>
-                  {item.isOpen ? t("open") : t("closed")}
+              <View style={[styles.statusPill, { backgroundColor: (item.openNow ?? item.isOpen) ? Colors.success + "22" : Colors.error + "22" }]}>
+                <Text style={[styles.statusPillText, { color: (item.openNow ?? item.isOpen) ? Colors.success : Colors.error }]}>
+                  {(item.openNow ?? item.isOpen) ? t("open") : t("closed")}
                 </Text>
               </View>
             </View>

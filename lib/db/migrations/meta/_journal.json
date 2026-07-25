@@ -43,6 +43,13 @@
       "when": 1785016448886,
       "tag": "0005_odd_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785017993073,
+      "tag": "0006_tired_lady_bullseye",
+      "breakpoints": true
     }
   ]
 }
