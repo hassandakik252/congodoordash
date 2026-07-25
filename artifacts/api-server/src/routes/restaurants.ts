@@ -36,6 +36,7 @@ const createMenuItemSchema = z.object({
   sku: z.string().optional(),
   barcode: z.string().optional(),
   brand: z.string().optional(),
+  requiresPrescription: z.boolean().optional(),
 });
 
 const updateMenuItemSchema = z.object({
@@ -51,6 +52,7 @@ const updateMenuItemSchema = z.object({
   sku: z.string().optional(),
   barcode: z.string().optional(),
   brand: z.string().optional(),
+  requiresPrescription: z.boolean().optional(),
 });
 
 // Helper — verify restaurant is owned by requester
@@ -365,6 +367,7 @@ router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), 
   if (parsed.data.sku !== undefined) updates.sku = parsed.data.sku;
   if (parsed.data.barcode !== undefined) updates.barcode = parsed.data.barcode;
   if (parsed.data.brand !== undefined) updates.brand = parsed.data.brand;
+  if (parsed.data.requiresPrescription !== undefined) updates.requiresPrescription = parsed.data.requiresPrescription;
 
   const [updated] = await db.update(menuItemsTable)
     .set(updates)

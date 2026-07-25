@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, StyleSheet, FlatList, Pressable, TextInput,
   Platform, ActivityIndicator, Alert, SectionList,
@@ -43,6 +43,24 @@ export default function RestaurantDetailScreen() {
   const isRestaurant = !restaurant?.vertical || restaurant.vertical === "restaurant";
   const storeIcon = (VERTICALS.find(v => v.id === (restaurant?.vertical ?? "restaurant"))?.icon ?? "storefront") as any;
   const productIcon = isRestaurant ? "fast-food" : "cube";
+
+  // Drinks vertical: one-time age confirmation on entering the store.
+  const ageAsked = useRef(false);
+  useEffect(() => {
+    if (restaurant?.vertical === "drinks" && !ageAsked.current) {
+      ageAsked.current = true;
+      Alert.alert(
+        language === "fr" ? "Vérification de l'âge" : "Age verification",
+        language === "fr"
+          ? "La vente d'alcool est réservée aux personnes de 18 ans et plus. Avez-vous 18 ans ou plus ?"
+          : "Alcohol is sold only to people 18 or older. Are you 18 or older?",
+        [
+          { text: language === "fr" ? "Non" : "No", style: "cancel", onPress: () => router.back() },
+          { text: language === "fr" ? "Oui, j'ai 18 ans+" : "Yes, I'm 18+" },
+        ],
+      );
+    }
+  }, [restaurant?.vertical, language]);
 
   const isOutOfStock = (item: any) =>
     item.stockQuantity != null && item.stockQuantity <= 0;
@@ -186,6 +204,12 @@ export default function RestaurantDetailScreen() {
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <Text style={styles.menuItemName}>{item.name}</Text>
+                  {item.requiresPrescription && (
+                    <View style={styles.rxBadge}>
+                      <Ionicons name="medkit" size={11} color={Colors.accent} />
+                      <Text style={styles.rxBadgeText}>{language === "fr" ? "Ordonnance requise" : "Prescription required"}</Text>
+                    </View>
+                  )}
                   {!!item.brand && <Text style={styles.menuItemBrand}>{item.brand}</Text>}
                   {item.description && (
                     <Text style={styles.menuItemDesc} numberOfLines={2}>{item.description}</Text>
@@ -307,6 +331,8 @@ const styles = StyleSheet.create({
   menuItemLeft: { flex: 1, marginRight: 12 },
   menuItemName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginBottom: 4 },
   menuItemBrand: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary, marginBottom: 4 },
+  rxBadge: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", backgroundColor: Colors.accent + "1A", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginBottom: 6 },
+  rxBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.accent },
   menuItemDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginBottom: 8 },
   menuItemPrice: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
   unitSuffix: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },

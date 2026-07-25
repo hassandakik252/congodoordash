@@ -43,6 +43,7 @@ export const productsTable = pgTable("menu_items", {
   sku: text("sku"),                            // stock-keeping unit
   barcode: text("barcode"),
   brand: text("brand"),
+  requiresPrescription: boolean("requires_prescription").notNull().default(false), // pharmacy Rx items
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
