@@ -28,17 +28,20 @@ app.use(
     },
   }),
 );
-// CORS: if CORS_ORIGINS (comma-separated) is set, restrict browser origins to
-// that allowlist; otherwise reflect the request origin (dev default). Native
-// mobile requests send no Origin header and are always allowed.
+// CORS: allow all origins with a wildcard so the Expo web app (port 8081),
+// admin panel, and native Expo Go clients can all reach the API.
+// Auth uses Bearer tokens in headers — no cookies — so credentials:true
+// is not needed and would conflict with the wildcard origin.
+// If CORS_ORIGINS is set (production), restrict to that explicit list.
 const corsOrigins = process.env["CORS_ORIGINS"]
   ?.split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 app.use(
   cors({
-    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : true,
-    credentials: true,
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 app.use(express.json());

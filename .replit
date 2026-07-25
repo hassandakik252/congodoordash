@@ -49,13 +49,13 @@ waitForPort = 5000
 name = "Expo Web Mobile"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN PORT=8081 corepack pnpm --filter @workspace/mobile exec expo start --web --port 8081"
-waitForPort = 8081
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_EXPO_DEV_DOMAIN EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN corepack pnpm --filter @workspace/mobile exec expo start --web --port 8081"
+waitForPort = 8081
 
 [[ports]]
 localPort = 5000
@@ -68,3 +68,7 @@ externalPort = 80
 [[ports]]
 localPort = 8081
 externalPort = 8081
+
+[[ports]]
+localPort = 19000
+externalPort = 3001
