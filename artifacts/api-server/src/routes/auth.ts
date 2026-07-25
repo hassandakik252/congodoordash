@@ -28,6 +28,7 @@ const registerSchema = z.object({
   phone: z.string().min(1),
   role: z.enum(["customer", "restaurant_owner", "driver"]),
   vehicleType: z.string().optional(),
+  acceptTerms: z.literal(true, { message: "You must accept the Terms & Privacy Policy" }),
 });
 
 const loginSchema = z.object({
@@ -62,7 +63,7 @@ router.post("/register", authLimiter, async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
 
   type NewUser = typeof usersTable.$inferInsert;
-  const insertValues: NewUser = { email, passwordHash, name, phone, role };
+  const insertValues: NewUser = { email, passwordHash, name, phone, role, termsAcceptedAt: new Date() };
   if (role === "driver") {
     insertValues.driverStatus = "pending";
     insertValues.vehicleType = vehicleType ?? null;

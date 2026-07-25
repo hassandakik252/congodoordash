@@ -1,5 +1,8 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { initMonitoring } from "./lib/monitoring";
+
+void initMonitoring();
 
 const rawPort = process.env["PORT"];
 

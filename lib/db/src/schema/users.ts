@@ -18,6 +18,7 @@ export const usersTable = pgTable("users", {
   merchantStatus: text("merchant_status"), // 'pending' | 'approved' | 'rejected' | null (store owners only)
   vehicleType: text("vehicle_type"),   // company-assigned vehicle label (company owns the fleet)
   expoPushToken: text("expo_push_token"), // Expo push token for future server-side push delivery
+  termsAcceptedAt: timestamp("terms_accepted_at"), // when the user accepted Terms & Privacy
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
