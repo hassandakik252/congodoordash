@@ -5,6 +5,7 @@ import { eq, and, inArray, isNull, desc, sql } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
 import { createNotification, notifyAdmins } from "../lib/notify";
+import { recomputeTotals } from "../lib/pricing";
 
 const router = Router();
 
@@ -18,29 +19,6 @@ class OutOfStockError extends Error {
 }
 
 type OrderItem = (typeof ordersTable.$inferSelect)["items"][number];
-
-/** Charged amount for one order line, accounting for picking outcome. */
-function lineTotal(item: OrderItem): number {
-  switch (item.lineStatus) {
-    case "out_of_stock":
-      return 0;
-    case "substituted":
-      // A rejected substitution is dropped; otherwise use the substitute price.
-      if (item.approved === false) return 0;
-      return item.finalPrice ?? item.price * item.quantity;
-    case "weight_adjusted":
-      return item.finalPrice ?? item.price * item.quantity;
-    default: // found | pending | undefined
-      return item.price * item.quantity;
-  }
-}
-
-/** Recompute subtotal/total from (possibly picked) items. */
-function recomputeTotals(items: OrderItem[], deliveryFee: number, discountAmount: number) {
-  const subtotal = items.reduce((s, i) => s + lineTotal(i), 0);
-  const total = Math.max(0, subtotal + deliveryFee - discountAmount);
-  return { subtotal, total };
-}
 
 const pickSchema = z.object({
   items: z.array(z.object({
