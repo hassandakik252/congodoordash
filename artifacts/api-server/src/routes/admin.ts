@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, restaurantsTable, ordersTable, reviewsTable, kycDocumentsTable } from "@workspace/db/schema";
+import { usersTable, restaurantsTable, ordersTable, reviewsTable, kycDocumentsTable, settingsTable } from "@workspace/db/schema";
 import { avg, count, eq, ilike, or, desc, sql, and } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
@@ -602,5 +602,33 @@ function makeMerchantDecision(action: "approved" | "rejected") {
 }
 router.patch("/merchants/:id/approve", makeMerchantDecision("approved"));
 router.patch("/merchants/:id/reject", makeMerchantDecision("rejected"));
+
+// ── App settings (currency exchange rate) ────────────────────────────────────
+
+router.get("/settings", async (_req, res) => {
+  try {
+    const rows = await db.select().from(settingsTable);
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    res.json({ usdRate: map["usd_rate"] ? Number(map["usd_rate"]) : null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to read settings" });
+  }
+});
+
+router.patch("/settings", async (req, res) => {
+  try {
+    const parsed = z.object({ usdRate: z.number().positive() }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "validation_error", message: parsed.error.message }); return; }
+    await db
+      .insert(settingsTable)
+      .values({ key: "usd_rate", value: String(parsed.data.usdRate) })
+      .onConflictDoUpdate({ target: settingsTable.key, set: { value: String(parsed.data.usdRate), updatedAt: new Date() } });
+    res.json({ usdRate: parsed.data.usdRate });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update settings" });
+  }
+});
 
 export default router;

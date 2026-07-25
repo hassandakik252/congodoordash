@@ -111,6 +111,11 @@ export const restaurantApi = {
 // Vertical-neutral alias; prefer `storeApi` in new code.
 export const storeApi = restaurantApi;
 
+// SETTINGS
+export const settingsApi = {
+  public: () => request<{ baseCurrency: string; currencies: string[]; usdRate: number }>("/settings/public"),
+};
+
 // UPLOADS
 export const uploadApi = {
   /** Upload a base64 image; returns the hosted URL. */

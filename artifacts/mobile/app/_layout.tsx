@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { CurrencyProvider } from "@/context/CurrencyContext";
 import { PushNotificationProvider } from "@/context/PushNotificationContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -69,6 +70,7 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <LanguageProvider>
+            <CurrencyProvider>
             <AuthProvider>
               <CartProvider>
                 <PushNotificationProvider>
@@ -80,6 +82,7 @@ export default function RootLayout() {
                 </PushNotificationProvider>
               </CartProvider>
             </AuthProvider>
+            </CurrencyProvider>
           </LanguageProvider>
         </QueryClientProvider>
       </ErrorBoundary>

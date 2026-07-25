@@ -12,6 +12,7 @@ import promoRouter from "./promo";
 import paymentsRouter from "./payments";
 import uploadsRouter from "./uploads";
 import kycRouter from "./kyc";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -34,6 +35,7 @@ router.use("/reviews", reviewsRouter);
 router.use("/payments", paymentsRouter);
 router.use("/uploads", uploadsRouter);
 router.use("/kyc", kycRouter);
+router.use("/settings", settingsRouter);
 router.use(promoRouter);
 
 export default router;

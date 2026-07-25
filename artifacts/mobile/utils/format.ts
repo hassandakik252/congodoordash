@@ -1,5 +1,22 @@
-export function formatCurrency(amount: number): string {
-  return `${Math.round(amount).toLocaleString()} CDF`;
+// ── Currency ─────────────────────────────────────────────────────────────────
+// All amounts are stored in CDF (base). The display currency + USD rate are set
+// at runtime by CurrencyContext, so every existing formatCurrency() call becomes
+// currency-aware without changing call sites.
+export type Currency = "CDF" | "USD";
+let _currency: Currency = "CDF";
+let _usdRate = 2850; // CDF per 1 USD (overridden from the server)
+
+export function setCurrencyConfig(currency: Currency, usdRate: number) {
+  _currency = currency;
+  if (Number.isFinite(usdRate) && usdRate > 0) _usdRate = usdRate;
+}
+
+export function formatCurrency(amountCDF: number): string {
+  if (_currency === "USD") {
+    const usd = (Number(amountCDF) || 0) / _usdRate;
+    return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `${Math.round(Number(amountCDF) || 0).toLocaleString()} CDF`;
 }
 
 export function formatDate(date: string): string {

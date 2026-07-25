@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useLang } from "@/context/LanguageContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import { userApi } from "@/services/api";
 
 const APP_VERSION = "1.0.0";
@@ -19,6 +20,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, updateUser } = useAuth();
   const { t, language, setLanguage } = useLang();
+  const { currency, setCurrency, usdRate } = useCurrency();
   const qc = useQueryClient();
 
   const [editing, setEditing] = useState(false);
@@ -151,6 +153,25 @@ export default function ProfileScreen() {
               </Pressable>
             ))}
           </View>
+        </View>
+
+        {/* Currency */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{language === "fr" ? "Devise" : "Currency"}</Text>
+          <View style={styles.langRow}>
+            {(["CDF", "USD"] as const).map(c => (
+              <Pressable
+                key={c}
+                style={[styles.langBtn, currency === c && styles.langActive]}
+                onPress={() => setCurrency(c)}
+              >
+                <Text style={[styles.langText, currency === c && styles.langActiveText]}>{c}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 8, fontFamily: "Inter_400Regular" }}>
+            {language === "fr" ? `Taux : 1 USD = ${usdRate.toLocaleString()} CDF` : `Rate: 1 USD = ${usdRate.toLocaleString()} CDF`}
+          </Text>
         </View>
 
         {/* Legal & Support */}
