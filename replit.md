@@ -164,13 +164,34 @@ DB additions: `admin` added to `user_role` enum; `is_active boolean` column on `
 
 ## Seed Data
 
-Run `pnpm --filter @workspace/api-server exec tsx src/seed.ts` to seed 6 restaurants:
+The Replit development database is migrated and seeded. The current demo data
+includes 7 stores (6 restaurants/drinks plus 1 grocery store), 42 products, and
+ready-to-use accounts for each application role:
+
+- **Customer** — `customer@deliverlbh.com` / `customer1234`
+- **Driver** — `driver@deliverlbh.com` / `driver1234` (approved, Moto)
+- **Merchant** — `owner@deliverlbh.com` / `admin1234`
+- **Admin** — `admin@deliverlbh.com` / the value stored in the `ADMIN_PASSWORD` secret
+
+The API is available through the **Deliver LBH API** workflow on port 8080
+(`GET /api/healthz` is the health check). The dependency-free admin console is
+available through the **Deliver LBH Admin** workflow on port 5000; it fills in
+the API host automatically in the Replit preview.
+
+The seed script can be rerun safely; it skips when stores already exist. A
+fresh database seeds:
 - Chez Mama Ngozi (Congolese)
 - Le Poulet d'Or (Chicken)
 - Pizza Roma (Pizza)
 - Dragon Palace (Chinese)
 - Quick Burger LBH (Fast Food)
 - Boissons Tropicales (Drinks)
+- Supermarché Katanga (Grocery)
+
+The mobile Expo package remains in the imported workspace, but its full
+dependency install is currently blocked by the package firewall on Expo CLI's
+transitive `tar` download. The API and admin workflows do not depend on that
+package and are ready to use.
 
 ## Bug Fixes Applied (Audit Pass)
 
