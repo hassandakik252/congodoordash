@@ -83,6 +83,9 @@ export function setupNotificationHandler(): void {
       shouldShowAlert: true,
       shouldPlaySound: true,
       shouldSetBadge: false,
+      // Required by expo-notifications SDK 54+
+      shouldShowBanner: true,
+      shouldShowList: true,
     }),
   });
 }
@@ -186,14 +189,14 @@ export function addPushListeners(
   if (!Notifications) return () => {};
 
   const receivedSub = Notifications.addNotificationReceivedListener((n) => {
-    const data = n.request.content.data as PushNotificationPayload;
+    const data = n.request.content.data as unknown as PushNotificationPayload;
     const title = n.request.content.title ?? "";
     const body  = n.request.content.body  ?? "";
     if (data?.event) onReceived(data, title, body);
   });
 
   const responseSub = Notifications.addNotificationResponseReceivedListener((r) => {
-    const data = r.notification.request.content.data as PushNotificationPayload;
+    const data = r.notification.request.content.data as unknown as PushNotificationPayload;
     if (data?.event) onTap(data);
   });
 

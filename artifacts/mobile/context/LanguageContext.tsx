@@ -48,7 +48,6 @@ const translations = {
     paymentSubmitted: "Reference Submitted",
     paymentConfirmed: "Payment Confirmed",
     paymentFailed: "Payment Failed",
-    paymentPaid: "Paid",
     paymentPendingLabel: "Awaiting Reference",
     paymentProvider: "Provider",
     paymentPhone: "Payment Phone",
@@ -64,7 +63,6 @@ const translations = {
     awaitingReview: "Awaiting admin review",
     refAlreadyReviewed: "This payment has already been reviewed",
     // Checkout info text updates
-    mobileMoneyDesc: "Pay via M-Pesa or Airtel Money. You can also submit your reference after placing the order.",
     mobileMoneyRefOptional: "Reference (optional — can be added after)",
 
     // Push notification alerts
@@ -109,7 +107,6 @@ const translations = {
     emptyCartDesc: "Add items from a restaurant to get started",
     browseRestaurants: "Browse Restaurants",
     subtotal: "Subtotal",
-    deliveryFee: "Delivery Fee",
     total: "Total",
     paymentMethod: "Payment Method",
     cashOnDelivery: "Cash on Delivery",
@@ -190,6 +187,7 @@ const translations = {
     deliveryTime: "Delivery Time (min)",
     deliveryTimePlaceholder: "e.g. 30",
     deliveryFee: "Delivery Fee (CDF)",
+    description: "Description",
     deliveryFeePlaceholder: "e.g. 2000",
     restaurantCategory: "Category",
     restaurantImageUrl: "Cover Image URL (optional)",
@@ -369,7 +367,6 @@ const translations = {
     paymentSubmitted: "Référence soumise",
     paymentConfirmed: "Paiement confirmé",
     paymentFailed: "Paiement échoué",
-    paymentPaid: "Payé",
     paymentPendingLabel: "En attente de référence",
     paymentProvider: "Fournisseur",
     paymentPhone: "Téléphone de paiement",
@@ -385,7 +382,6 @@ const translations = {
     awaitingReview: "En attente de vérification",
     refAlreadyReviewed: "Ce paiement a déjà été examiné",
     // Checkout info text updates
-    mobileMoneyDesc: "Payez via M-Pesa ou Airtel Money. Vous pouvez aussi soumettre votre référence après la commande.",
     mobileMoneyRefOptional: "Référence (optionnelle — peut être ajoutée après)",
 
     // Push notification alerts
@@ -430,7 +426,6 @@ const translations = {
     emptyCartDesc: "Ajoutez des articles d'un restaurant pour commencer",
     browseRestaurants: "Parcourir les restaurants",
     subtotal: "Sous-total",
-    deliveryFee: "Frais de livraison",
     total: "Total",
     paymentMethod: "Mode de paiement",
     cashOnDelivery: "Paiement à la livraison",
@@ -511,6 +506,7 @@ const translations = {
     deliveryTime: "Délai de livraison (min)",
     deliveryTimePlaceholder: "ex: 30",
     deliveryFee: "Frais de livraison (CDF)",
+    description: "Description",
     deliveryFeePlaceholder: "ex: 2000",
     restaurantCategory: "Catégorie",
     restaurantImageUrl: "URL de l'image de couverture (optionnel)",
