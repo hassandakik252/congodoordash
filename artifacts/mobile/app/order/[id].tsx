@@ -215,6 +215,30 @@ export default function OrderDetailScreen() {
     );
   };
 
+  // ── Substitution approval (customer) ─────────────────────────────────────
+  const approveSubMutation = useMutation({
+    mutationFn: (vars: { menuItemId: number; approved: boolean }) =>
+      orderApi.approveSubstitutions(orderId, [{ menuItemId: vars.menuItemId, approved: vars.approved }]),
+    onSuccess: () => {
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    },
+    onError: (err: any) => Alert.alert(t("error"), err.message || t("error")),
+  });
+
+  // Charged amount for a line, mirroring the server's picking logic.
+  const lineTotalDisplay = (item: any): number => {
+    if (item.lineStatus === "out_of_stock") return 0;
+    if (item.lineStatus === "substituted") return item.approved === false ? 0 : (item.finalPrice ?? item.price * item.quantity);
+    if (item.lineStatus === "weight_adjusted") return item.finalPrice ?? item.price * item.quantity;
+    return item.price * item.quantity;
+  };
+
+  const pendingSubs = (order?.items ?? []).filter(
+    (i: any) => i.lineStatus === "substituted" && (i.approved === null || i.approved === undefined),
+  );
+
   const isCustomerOwner = user?.role === "customer" && order?.customerId === user?.id;
   const canSubmitRef =
     isCustomerOwner &&
@@ -297,16 +321,67 @@ export default function OrderDetailScreen() {
             </View>
           </View>
 
+          {/* ── SUBSTITUTIONS TO APPROVE (customer) ── */}
+          {isCustomerOwner && pendingSubs.length > 0 && (
+            <View style={[styles.section, styles.subCard]}>
+              <Text style={styles.sectionTitle}>
+                {language === "fr" ? "Remplacements à approuver" : "Substitutions to approve"}
+              </Text>
+              {pendingSubs.map((item: any, idx: number) => (
+                <View key={idx} style={styles.subItem}>
+                  <Text style={styles.subOriginal}>
+                    {item.name}
+                  </Text>
+                  <View style={styles.subArrowRow}>
+                    <Ionicons name="arrow-forward" size={13} color={Colors.accent} />
+                    <Text style={styles.subReplacement}>{item.substituteName}</Text>
+                    <Text style={styles.subPrice}>{formatCurrency(item.finalPrice ?? item.price * item.quantity)}</Text>
+                  </View>
+                  <View style={styles.subActions}>
+                    <Pressable
+                      style={({ pressed }) => [styles.subBtn, styles.subReject, pressed && { opacity: 0.8 }]}
+                      disabled={approveSubMutation.isPending}
+                      onPress={() => approveSubMutation.mutate({ menuItemId: item.menuItemId, approved: false })}
+                    >
+                      <Ionicons name="close" size={15} color={Colors.error} />
+                      <Text style={[styles.subBtnText, { color: Colors.error }]}>{language === "fr" ? "Refuser" : "Reject"}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.subBtn, styles.subApprove, pressed && { opacity: 0.8 }]}
+                      disabled={approveSubMutation.isPending}
+                      onPress={() => approveSubMutation.mutate({ menuItemId: item.menuItemId, approved: true })}
+                    >
+                      <Ionicons name="checkmark" size={15} color="#fff" />
+                      <Text style={[styles.subBtnText, { color: "#fff" }]}>{language === "fr" ? "Accepter" : "Approve"}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* ── ITEMS ── */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t("items")}</Text>
-            {order.items?.map((item: any, idx: number) => (
-              <View key={idx} style={[styles.itemRow, idx === order.items.length - 1 && { borderBottomWidth: 0 }]}>
-                <Text style={styles.itemQty}>{item.quantity}×</Text>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text>
-              </View>
-            ))}
+            {order.items?.map((item: any, idx: number) => {
+              const oos = item.lineStatus === "out_of_stock" || (item.lineStatus === "substituted" && item.approved === false);
+              const substituted = item.lineStatus === "substituted" && item.approved !== false;
+              const weight = item.lineStatus === "weight_adjusted";
+              return (
+                <View key={idx} style={[styles.itemRow, idx === order.items.length - 1 && { borderBottomWidth: 0 }]}>
+                  <Text style={styles.itemQty}>{item.quantity}×</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.itemName, oos && styles.itemNameOos]}>{item.name}</Text>
+                    {substituted && item.substituteName && (
+                      <Text style={styles.itemSubNote}>{language === "fr" ? "Remplacé par " : "Replaced with "}{item.substituteName}</Text>
+                    )}
+                    {oos && <Text style={styles.itemOosNote}>{language === "fr" ? "Indisponible" : "Unavailable"}</Text>}
+                    {weight && <Text style={styles.itemWeightNote}>{language === "fr" ? "Prix ajusté au poids" : "Weight-adjusted price"}</Text>}
+                  </View>
+                  <Text style={[styles.itemPrice, oos && styles.itemNameOos]}>{formatCurrency(lineTotalDisplay(item))}</Text>
+                </View>
+              );
+            })}
           </View>
 
           {/* ── PRICE BREAKDOWN ── */}
@@ -546,7 +621,22 @@ const styles = StyleSheet.create({
   },
   itemQty: { width: 28, fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.primary },
   itemName: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textPrimary },
+  itemNameOos: { textDecorationLine: "line-through", color: Colors.textMuted },
+  itemSubNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.accent, marginTop: 2 },
+  itemOosNote: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.error, marginTop: 2 },
+  itemWeightNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
   itemPrice: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  subCard: { borderWidth: 1, borderColor: Colors.accent + "55" },
+  subItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  subOriginal: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  subArrowRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  subReplacement: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  subPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.primary },
+  subActions: { flexDirection: "row", gap: 10, marginTop: 10 },
+  subBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 12 },
+  subReject: { backgroundColor: Colors.error + "18", borderWidth: 1, borderColor: Colors.error + "55" },
+  subApprove: { backgroundColor: Colors.primary },
+  subBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   summaryLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },

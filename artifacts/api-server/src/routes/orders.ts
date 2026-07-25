@@ -17,6 +17,47 @@ class OutOfStockError extends Error {
   }
 }
 
+type OrderItem = (typeof ordersTable.$inferSelect)["items"][number];
+
+/** Charged amount for one order line, accounting for picking outcome. */
+function lineTotal(item: OrderItem): number {
+  switch (item.lineStatus) {
+    case "out_of_stock":
+      return 0;
+    case "substituted":
+      // A rejected substitution is dropped; otherwise use the substitute price.
+      if (item.approved === false) return 0;
+      return item.finalPrice ?? item.price * item.quantity;
+    case "weight_adjusted":
+      return item.finalPrice ?? item.price * item.quantity;
+    default: // found | pending | undefined
+      return item.price * item.quantity;
+  }
+}
+
+/** Recompute subtotal/total from (possibly picked) items. */
+function recomputeTotals(items: OrderItem[], deliveryFee: number, discountAmount: number) {
+  const subtotal = items.reduce((s, i) => s + lineTotal(i), 0);
+  const total = Math.max(0, subtotal + deliveryFee - discountAmount);
+  return { subtotal, total };
+}
+
+const pickSchema = z.object({
+  items: z.array(z.object({
+    menuItemId: z.number().int().positive(),
+    lineStatus: z.enum(["found", "out_of_stock", "substituted", "weight_adjusted"]),
+    substituteName: z.string().optional(),
+    finalPrice: z.number().nonnegative().optional(),
+  })).min(1),
+});
+
+const approveSubsSchema = z.object({
+  decisions: z.array(z.object({
+    menuItemId: z.number().int().positive(),
+    approved: z.boolean(),
+  })).min(1),
+});
+
 const createOrderSchema = z.object({
   restaurantId: z.number().int().positive(),
   items: z.array(z.object({
@@ -603,6 +644,117 @@ router.patch("/:id/payment", requireAuth, requireRole("customer"), async (req: A
     body: `Commande #${id} — référence reçue, en attente de validation.`,
     orderId: id,
   }).catch(err => console.error("[notify] Failed to notify admins of payment submission for order", id, err));
+
+  res.json(updated);
+});
+
+// PATCH /orders/:id/pick — shopper (assigned driver or the store owner) records
+// picking results for a grocery/retail order: items found, out of stock,
+// substituted, or weight-adjusted. Recomputes the order total. Proposed
+// substitutions await customer approval.
+router.patch("/:id/pick", requireAuth, async (req: AuthRequest, res) => {
+  const id = parseInt(String(req.params.id));
+  if (isNaN(id)) { res.status(400).json({ error: "bad_request", message: "Invalid order ID" }); return; }
+
+  const parsed = pickSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", message: parsed.error.message });
+    return;
+  }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "not_found", message: "Order not found" }); return; }
+
+  const user = req.user!;
+  // Authorize: assigned driver, the store's owner, or an admin.
+  let isStoreOwner = false;
+  if (user.role === "restaurant_owner") {
+    const [store] = await db.select({ ownerId: restaurantsTable.ownerId })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
+    isStoreOwner = store?.ownerId === user.id;
+  }
+  const isAssignedDriver = order.driverId === user.id;
+  if (user.role !== "admin" && !isStoreOwner && !isAssignedDriver) {
+    res.status(403).json({ error: "forbidden", message: "Only the store or the assigned driver can pick this order" });
+    return;
+  }
+  if (order.status === "delivered" || order.status === "cancelled") {
+    res.status(409).json({ error: "invalid_state", message: "Order can no longer be picked" });
+    return;
+  }
+
+  const updateMap = new Map(parsed.data.items.map(u => [u.menuItemId, u]));
+  const newItems = order.items.map(line => {
+    const u = updateMap.get(line.menuItemId);
+    if (!u) return line;
+    const next: typeof line = { ...line, lineStatus: u.lineStatus };
+    if (u.lineStatus === "substituted") {
+      next.substituteName = u.substituteName;
+      next.finalPrice = u.finalPrice;
+      next.approved = null; // reset — awaiting customer decision
+    } else if (u.lineStatus === "weight_adjusted") {
+      next.finalPrice = u.finalPrice;
+    } else {
+      // found / out_of_stock — clear any prior substitution fields
+      next.substituteName = undefined;
+      next.finalPrice = undefined;
+      next.approved = undefined;
+    }
+    return next;
+  });
+
+  const { subtotal, total } = recomputeTotals(newItems, order.deliveryFee, order.discountAmount);
+  const [updated] = await db.update(ordersTable)
+    .set({ items: newItems, subtotal, total, updatedAt: new Date() })
+    .where(eq(ordersTable.id, id))
+    .returning();
+
+  const pendingSubs = newItems.filter(i => i.lineStatus === "substituted" && (i.approved === null || i.approved === undefined));
+  if (pendingSubs.length > 0) {
+    createNotification({
+      userId: order.customerId,
+      type: "order_preparing",
+      title: "Article remplacé — votre accord ?",
+      body: `Votre commande #${id} a ${pendingSubs.length} remplacement(s) à approuver.`,
+      orderId: id,
+    }).catch(err => console.error("[notify] Failed to notify customer of substitutions for order", id, err));
+  }
+
+  res.json(updated);
+});
+
+// PATCH /orders/:id/approve-substitutions — customer approves/rejects proposed
+// substitutions. Rejected items are dropped and the total is recomputed.
+router.patch("/:id/approve-substitutions", requireAuth, requireRole("customer"), async (req: AuthRequest, res) => {
+  const id = parseInt(String(req.params.id));
+  if (isNaN(id)) { res.status(400).json({ error: "bad_request", message: "Invalid order ID" }); return; }
+
+  const parsed = approveSubsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", message: parsed.error.message });
+    return;
+  }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "not_found", message: "Order not found" }); return; }
+  if (order.customerId !== req.user!.id) {
+    res.status(403).json({ error: "forbidden", message: "Not your order" });
+    return;
+  }
+
+  const decisionMap = new Map(parsed.data.decisions.map(d => [d.menuItemId, d.approved]));
+  const newItems = order.items.map(line => {
+    if (line.lineStatus !== "substituted") return line;
+    const decision = decisionMap.get(line.menuItemId);
+    if (decision === undefined) return line;
+    return { ...line, approved: decision };
+  });
+
+  const { subtotal, total } = recomputeTotals(newItems, order.deliveryFee, order.discountAmount);
+  const [updated] = await db.update(ordersTable)
+    .set({ items: newItems, subtotal, total, updatedAt: new Date() })
+    .where(eq(ordersTable.id, id))
+    .returning();
 
   res.json(updated);
 });

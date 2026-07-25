@@ -54,7 +54,22 @@ export const ordersTable = pgTable("orders", {
   deliveryAddress: text("delivery_address").notNull(),
   driverInstructions: text("driver_instructions"),
   customerPhone: text("customer_phone"),
-  items: jsonb("items").notNull().$type<Array<{ menuItemId: number; name: string; price: number; quantity: number }>>(),
+  items: jsonb("items").notNull().$type<Array<{
+    menuItemId: number;
+    name: string;
+    price: number;
+    quantity: number;
+    // ── Grocery picking / substitution state (optional; set during shopping) ──
+    // "pending"       — not yet picked (default when absent)
+    // "found"         — picked as ordered
+    // "out_of_stock"  — unavailable; excluded from the recomputed total
+    // "substituted"   — replaced; substituteName/finalPrice apply, needs customer approval
+    // "weight_adjusted" — weight/variable item; finalPrice is the charged amount
+    lineStatus?: "pending" | "found" | "out_of_stock" | "substituted" | "weight_adjusted";
+    substituteName?: string;
+    finalPrice?: number;              // charged line total (overrides price*quantity) for substitution/weight
+    approved?: boolean | null;        // customer decision on a substitution (null/undefined = awaiting)
+  }>>(),
   subtotal: real("subtotal").notNull(),
   deliveryFee: real("delivery_fee").notNull(),
   total: real("total").notNull(),

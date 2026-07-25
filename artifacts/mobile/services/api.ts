@@ -261,6 +261,16 @@ export const orderApi = {
     request<any>(`/orders/${id}/accept`, { method: "POST" }),
   availableForDriver: () => request<any[]>("/orders/available"),
   myDriverOrders: () => request<any[]>("/orders/my-orders"),
+
+  /** Shopper (store owner or assigned driver) records grocery picking results. */
+  pick: (
+    id: number,
+    items: Array<{ menuItemId: number; lineStatus: "found" | "out_of_stock" | "substituted" | "weight_adjusted"; substituteName?: string; finalPrice?: number }>,
+  ) => request<any>(`/orders/${id}/pick`, { method: "PATCH", body: JSON.stringify({ items }) }),
+
+  /** Customer approves/rejects proposed substitutions. */
+  approveSubstitutions: (id: number, decisions: Array<{ menuItemId: number; approved: boolean }>) =>
+    request<any>(`/orders/${id}/approve-substitutions`, { method: "PATCH", body: JSON.stringify({ decisions }) }),
 };
 
 // REVIEWS
