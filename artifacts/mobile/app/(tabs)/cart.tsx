@@ -56,6 +56,7 @@ export default function CartScreen() {
 
   const discountAmount = promoResult?.discountAmount ?? 0;
   const [tip, setTip] = useState(0);
+  const [scheduleHours, setScheduleHours] = useState(0); // 0 = ASAP
   const finalTotal = Math.max(0, total - discountAmount + tip);
 
   const handleApplyPromo = async () => {
@@ -156,6 +157,7 @@ export default function CartScreen() {
         driverInstructions: driverInstructions.trim() || undefined,
         promoCode: promoResult?.code || undefined,
         tip: tip > 0 ? tip : undefined,
+        scheduledFor: scheduleHours > 0 ? new Date(Date.now() + scheduleHours * 3600_000).toISOString() : undefined,
       });
 
       succeeded = true;
@@ -479,6 +481,20 @@ export default function CartScreen() {
                 {!!promoError && <Text style={styles.fieldError}>{promoError}</Text>}
               </>
             )}
+          </View>
+
+          {/* ── SCHEDULE ── */}
+          <View style={styles.section}>
+            <Text style={styles.tipTitle}>{language === "fr" ? "Quand ?" : "When?"}</Text>
+            <View style={styles.tipRow}>
+              {[0, 1, 2, 3].map(h => (
+                <Pressable key={h} style={[styles.tipChip, scheduleHours === h && styles.tipChipActive]} onPress={() => setScheduleHours(h)}>
+                  <Text style={[styles.tipChipText, scheduleHours === h && styles.tipChipTextActive]}>
+                    {h === 0 ? (language === "fr" ? "Maintenant" : "Now") : `+${h}h`}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           {/* ── TIP ── */}

@@ -180,6 +180,7 @@ export interface CreateOrderPayload {
   driverInstructions?: string;
   promoCode?: string;
   tip?: number;
+  scheduledFor?: string; // ISO datetime; omit for ASAP
 }
 
 // PROMO CODES

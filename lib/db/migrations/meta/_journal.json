@@ -57,6 +57,13 @@
       "when": 1785018391711,
       "tag": "0007_optimal_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785019048170,
+      "tag": "0008_perpetual_molten_man",
+      "breakpoints": true
     }
   ]
 }

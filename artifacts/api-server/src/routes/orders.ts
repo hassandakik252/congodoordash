@@ -53,6 +53,7 @@ const createOrderSchema = z.object({
   driverInstructions: z.string().optional(),
   promoCode: z.string().optional(),
   tip: z.number().nonnegative().optional(),
+  scheduledFor: z.string().datetime({ offset: true }).optional(), // ISO; must be in the future
 });
 
 const updateStatusSchema = z.object({
@@ -122,9 +123,19 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   const {
     restaurantId, items, deliveryAddress,
     paymentMethod, paymentProvider, paymentReference, paymentPhone,
-    notes, driverInstructions, promoCode, tip: tipInput,
+    notes, driverInstructions, promoCode, tip: tipInput, scheduledFor: scheduledForInput,
   } = parsed.data;
   const tip = tipInput ?? 0;
+
+  let scheduledFor: Date | null = null;
+  if (scheduledForInput) {
+    const d = new Date(scheduledForInput);
+    if (d.getTime() < Date.now() + 5 * 60 * 1000) {
+      res.status(400).json({ error: "invalid_schedule", message: "L'heure programmée doit être au moins 5 minutes dans le futur." });
+      return;
+    }
+    scheduledFor = d;
+  }
 
   const [restaurant] = await db
     .select()
@@ -239,6 +250,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
           promoCode: appliedPromo?.code || null,
           discountAmount,
           tip,
+          scheduledFor,
         })
         .returning();
 
@@ -288,6 +300,8 @@ router.get("/available", requireAuth, requireRole("driver"), async (req: AuthReq
     .where(
       and(
         isNull(ordersTable.driverId),
+        // Scheduled orders only appear once their time is due.
+        sql`(${ordersTable.scheduledFor} IS NULL OR ${ordersTable.scheduledFor} <= now())`,
         or(
           eq(ordersTable.status, "ready_for_pickup"),
           and(
