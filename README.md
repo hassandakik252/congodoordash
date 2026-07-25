@@ -95,6 +95,25 @@ The platform has been generalized from a restaurant-only app to multi-vertical:
 
 Run `pnpm run typecheck` and `pnpm test` to verify.
 
+## Payments (mobile money)
+
+Two paths exist:
+
+- **Manual** (works today, no integration): the customer submits their M-Pesa /
+  Airtel transaction reference (`PATCH /orders/:id/payment`) and an admin
+  confirms it in the admin panel.
+- **Automated gateway** (`POST /orders/:id/pay`): initiates a charge through the
+  configured `PaymentProvider`; the provider prompts the payer's phone and later
+  calls `POST /payments/webhook` to confirm/decline, which flips the order's
+  `paymentStatus` and notifies the customer.
+
+The default `PAYMENT_PROVIDER=mock` is a local sandbox (no external calls) — fully
+testable: initiate, then POST the webhook with `{ transactionId, status }` and the
+`x-webhook-secret` header. To go live, implement `PaymentProvider` in
+`artifacts/api-server/src/lib/payments.ts` for your DRC provider/aggregator
+(M-Pesa, Airtel, or e.g. Flutterwave/CinetPay/MaxiCash), register it in
+`getPaymentProvider()`, and set `PAYMENT_PROVIDER` + `PAYMENT_WEBHOOK_SECRET`.
+
 ## Building the mobile app (EAS)
 
 The app builds with [EAS Build](https://docs.expo.dev/build/introduction/).

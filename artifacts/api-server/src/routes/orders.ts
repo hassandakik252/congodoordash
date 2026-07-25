@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createNotification, notifyAdmins } from "../lib/notify";
 import { recomputeTotals } from "../lib/pricing";
 import { isValidTransition, isClaimable, promoDiscount } from "../lib/orderRules";
+import { getPaymentProvider } from "../lib/payments";
 
 const router = Router();
 
@@ -60,6 +61,11 @@ const updateStatusSchema = z.object({
 const submitPaymentSchema = z.object({
   reference: z.string().min(1),
   phone: z.string().optional(),
+});
+
+const initiatePaymentSchema = z.object({
+  phone: z.string().min(1),
+  channel: z.enum(["M-Pesa", "Airtel Money"]),
 });
 
 // GET /orders — role-filtered list, newest first
@@ -747,6 +753,65 @@ router.patch("/:id/approve-substitutions", requireAuth, requireRole("customer"),
     .returning();
 
   res.json(updated);
+});
+
+// POST /orders/:id/pay — initiate an automated mobile-money charge via the
+// configured payment provider (customer). The provider prompts the payer's
+// phone and later confirms via POST /payments/webhook.
+router.post("/:id/pay", requireAuth, requireRole("customer"), async (req: AuthRequest, res) => {
+  const id = parseInt(String(req.params.id));
+  if (isNaN(id)) { res.status(400).json({ error: "bad_request", message: "Invalid order ID" }); return; }
+
+  const parsed = initiatePaymentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", message: parsed.error.message });
+    return;
+  }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "not_found", message: "Order not found" }); return; }
+  if (order.customerId !== req.user!.id) { res.status(403).json({ error: "forbidden", message: "Not your order" }); return; }
+  if (order.paymentMethod !== "mobile_money") {
+    res.status(400).json({ error: "not_mobile_money", message: "This order is not a mobile money order" });
+    return;
+  }
+  if (!["pending", "submitted", "failed"].includes(order.paymentStatus)) {
+    res.status(409).json({ error: "already_settled", message: "Ce paiement est déjà réglé." });
+    return;
+  }
+
+  let result;
+  try {
+    result = await getPaymentProvider().initiate({
+      orderId: id,
+      amount: order.total,
+      phone: parsed.data.phone,
+      channel: parsed.data.channel,
+    });
+  } catch (err) {
+    console.error("[payments] initiate failed for order", id, err);
+    res.status(502).json({ error: "provider_error", message: "Le fournisseur de paiement est indisponible. Réessayez." });
+    return;
+  }
+
+  const [updated] = await db.update(ordersTable)
+    .set({
+      paymentStatus: "submitted",
+      paymentProvider: parsed.data.channel,
+      paymentPhone: parsed.data.phone,
+      paymentReference: result.transactionId,
+      paymentRequestedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(ordersTable.id, id))
+    .returning();
+
+  res.status(202).json({
+    transactionId: result.transactionId,
+    status: result.status,
+    message: result.message ?? "Paiement initié. Confirmez sur votre téléphone.",
+    order: updated,
+  });
 });
 
 export default router;

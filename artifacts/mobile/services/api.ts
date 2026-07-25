@@ -255,6 +255,13 @@ export const orderApi = {
   submitPaymentReference: (orderId: number, payload: { reference: string; phone?: string }) =>
     request<any>(`/orders/${orderId}/payment`, { method: "PATCH", body: JSON.stringify(payload) }),
 
+  /** Initiate an automated mobile-money charge; provider prompts the phone and
+   *  confirms via webhook. Poll orderApi.get(id).paymentStatus for the result. */
+  pay: (orderId: number, payload: { phone: string; channel: "M-Pesa" | "Airtel Money" }) =>
+    request<{ transactionId: string; status: string; message: string; order: any }>(
+      `/orders/${orderId}/pay`, { method: "POST", body: JSON.stringify(payload) },
+    ),
+
   updateStatus: (id: number, status: string) =>
     request<any>(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   acceptOrder: (id: number) =>
