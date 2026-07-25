@@ -97,6 +97,19 @@ async function seed() {
       deliveryTimeMin: 10,
       deliveryFee: 0,
     },
+    {
+      ownerId: owner.id,
+      vertical: "grocery",
+      name: "Supermarché Katanga",
+      description: "Épicerie de quartier — produits frais, boissons et essentiels du foyer",
+      category: "Épicerie",
+      address: "Avenue de l'Université, Lubumbashi",
+      phone: "+243 810 000 007",
+      isOpen: true,
+      rating: 4.5,
+      deliveryTimeMin: 40,
+      deliveryFee: 2500,
+    },
   ]).returning();
 
   console.log(`Created ${restaurants.length} restaurants`);
@@ -110,6 +123,10 @@ async function seed() {
       price: number;
       category: string;
       isAvailable: boolean;
+      // Grocery / retail fields (optional; restaurants omit them)
+      stockQuantity?: number;
+      unit?: "each" | "kg" | "g" | "L" | "pack";
+      brand?: string;
     }>;
   }> = [
     {
@@ -176,10 +193,24 @@ async function seed() {
         { name: "Eau Minérale 1L", description: "Eau minérale fraîche", price: 1000, category: "Eau", isAvailable: true },
       ],
     },
+    {
+      // Grocery store (restaurants[6]) — products carry stock + unit
+      restaurantId: restaurants[6].id,
+      items: [
+        { name: "Riz Parfumé", description: "Sac de riz long grain", price: 25000, category: "Céréales", isAvailable: true, stockQuantity: 40, unit: "pack", brand: "Riz du Katanga" },
+        { name: "Bananes Plantains", description: "Vendues au kilo", price: 3000, category: "Fruits & Légumes", isAvailable: true, stockQuantity: 80, unit: "kg" },
+        { name: "Tomates Fraîches", description: "Tomates locales, au kilo", price: 2500, category: "Fruits & Légumes", isAvailable: true, stockQuantity: 60, unit: "kg" },
+        { name: "Huile de Palme 1L", description: "Huile de palme rouge", price: 6000, category: "Épicerie", isAvailable: true, stockQuantity: 30, unit: "each", brand: "Congo Palm" },
+        { name: "Farine de Manioc", description: "Farine de manioc, paquet 1kg", price: 4000, category: "Céréales", isAvailable: true, stockQuantity: 50, unit: "pack" },
+        { name: "Savon de Ménage", description: "Savon multi-usage", price: 1500, category: "Maison", isAvailable: true, stockQuantity: 100, unit: "each", brand: "Savonnerie LBH" },
+        { name: "Lait en Poudre 400g", description: "Lait entier en poudre", price: 8000, category: "Produits Laitiers", isAvailable: true, stockQuantity: 25, unit: "each", brand: "Nido" },
+        { name: "Œufs (Plateau de 30)", description: "Plateau de 30 œufs frais", price: 12000, category: "Produits Laitiers", isAvailable: true, stockQuantity: 20, unit: "pack" },
+      ],
+    },
   ];
 
   for (const { restaurantId, items } of menuData) {
-    const toInsert = items.map(item => ({ restaurantId, ...item }));
+    const toInsert = items.map(item => ({ storeId: restaurantId, ...item }));
     await db.insert(menuItemsTable).values(toInsert);
   }
 

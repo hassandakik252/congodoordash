@@ -1,7 +1,7 @@
 import { pgTable, serial, text, timestamp, integer, real, boolean, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { restaurantsTable } from "./restaurants";
+import { storesTable } from "./stores";
 
 /**
  * Unit a product is sold by. Restaurants use "each"; grocery/retail may sell
@@ -21,10 +21,14 @@ export const productUnitEnum = pgEnum("product_unit", [
  * category / isAvailable and leave the grocery fields null. Grocery, retail and
  * pharmacy stores additionally use stockQuantity (inventory), unit, sku, brand
  * and categoryId (aisle). stockQuantity = null means "unlimited" (restaurants).
+ *
+ * The physical table is still named "menu_items" to avoid a data migration;
+ * the code refers to it as `productsTable`. `menuItemsTable` is kept as a
+ * backward-compatible alias. Column `restaurant_id` is likewise the store FK.
  */
-export const menuItemsTable = pgTable("menu_items", {
+export const productsTable = pgTable("menu_items", {
   id: serial("id").primaryKey(),
-  restaurantId: integer("restaurant_id").notNull().references(() => restaurantsTable.id),
+  storeId: integer("restaurant_id").notNull().references(() => storesTable.id),
   name: text("name").notNull(),
   description: text("description"),
   price: real("price").notNull(),
@@ -43,6 +47,12 @@ export const menuItemsTable = pgTable("menu_items", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertMenuItemSchema = createInsertSchema(menuItemsTable).omit({ id: true, createdAt: true });
-export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
-export type MenuItem = typeof menuItemsTable.$inferSelect;
+export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, createdAt: true });
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof productsTable.$inferSelect;
+
+// ── Backward-compatible aliases (pre-generalization names) ───────────────────
+export const menuItemsTable = productsTable;
+export const insertMenuItemSchema = insertProductSchema;
+export type InsertMenuItem = InsertProduct;
+export type MenuItem = Product;

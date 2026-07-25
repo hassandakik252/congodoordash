@@ -14,6 +14,8 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
+// Canonical (vertical-neutral) mount; "/restaurants" kept as a backward-compat alias
+router.use("/stores", restaurantsRouter);
 router.use("/restaurants", restaurantsRouter);
 router.use("/orders", ordersRouter);
 router.use("/driver/available-orders", (req, _res, next) => {

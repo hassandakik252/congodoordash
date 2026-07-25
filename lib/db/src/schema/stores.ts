@@ -6,7 +6,7 @@ import { usersTable } from "./users";
 /**
  * Store vertical. Drives the customer UI (menu vs. searchable catalog), the
  * order lifecycle (kitchen prep vs. in-store picking) and merchant tooling.
- * Existing restaurant rows default to "restaurant" so this change is additive.
+ * Existing restaurant rows default to "restaurant".
  */
 export const verticalEnum = pgEnum("vertical", [
   "restaurant",
@@ -16,7 +16,12 @@ export const verticalEnum = pgEnum("vertical", [
   "drinks",
 ]);
 
-export const restaurantsTable = pgTable("restaurants", {
+/**
+ * Stores / merchants for all verticals (was "restaurants"). The physical table
+ * is still named "restaurants" to avoid a data migration; the code refers to it
+ * as `storesTable`. `restaurantsTable` is kept as a backward-compatible alias.
+ */
+export const storesTable = pgTable("restaurants", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id").notNull().references(() => usersTable.id),
   vertical: verticalEnum("vertical").notNull().default("restaurant"),
@@ -34,6 +39,12 @@ export const restaurantsTable = pgTable("restaurants", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertRestaurantSchema = createInsertSchema(restaurantsTable).omit({ id: true, createdAt: true, rating: true });
-export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
-export type Restaurant = typeof restaurantsTable.$inferSelect;
+export const insertStoreSchema = createInsertSchema(storesTable).omit({ id: true, createdAt: true, rating: true });
+export type InsertStore = z.infer<typeof insertStoreSchema>;
+export type Store = typeof storesTable.$inferSelect;
+
+// ── Backward-compatible aliases (pre-generalization names) ───────────────────
+export const restaurantsTable = storesTable;
+export const insertRestaurantSchema = insertStoreSchema;
+export type InsertRestaurant = InsertStore;
+export type Restaurant = Store;

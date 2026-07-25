@@ -181,7 +181,7 @@ router.get("/mine/menu", requireAuth, requireRole("restaurant_owner"), async (re
 
   const items = await db.select()
     .from(menuItemsTable)
-    .where(eq(menuItemsTable.restaurantId, restaurant.id))
+    .where(eq(menuItemsTable.storeId, restaurant.id))
     .orderBy(menuItemsTable.category, menuItemsTable.name);
 
   res.json(items);
@@ -226,7 +226,7 @@ router.get("/:id/menu", async (req, res) => {
   const items = await db.select()
     .from(menuItemsTable)
     .where(and(
-      eq(menuItemsTable.restaurantId, restaurantId),
+      eq(menuItemsTable.storeId, restaurantId),
       eq(menuItemsTable.isAvailable, true),
     ))
     .orderBy(menuItemsTable.category, menuItemsTable.name);
@@ -251,7 +251,7 @@ router.post("/:id/menu", requireAuth, requireRole("restaurant_owner"), async (re
 
   const [item] = await db
     .insert(menuItemsTable)
-    .values({ ...parsed.data, restaurantId })
+    .values({ ...parsed.data, storeId: restaurantId })
     .returning();
 
   res.status(201).json(item);
@@ -269,7 +269,7 @@ router.patch("/:id/menu/:itemId/availability", requireAuth, requireRole("restaur
 
   const [existing] = await db.select({ isAvailable: menuItemsTable.isAvailable })
     .from(menuItemsTable)
-    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.restaurantId, restaurantId)))
+    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.storeId, restaurantId)))
     .limit(1);
 
   if (!existing) { res.status(404).json({ error: "not_found", message: "Item not found" }); return; }
@@ -300,7 +300,7 @@ router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), 
 
   const [item] = await db.select({ id: menuItemsTable.id })
     .from(menuItemsTable)
-    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.restaurantId, restaurantId)))
+    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.storeId, restaurantId)))
     .limit(1);
   if (!item) { res.status(404).json({ error: "not_found", message: "Item not found" }); return; }
 
@@ -337,7 +337,7 @@ router.delete("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"),
   if (ownership === "forbidden") { res.status(403).json({ error: "forbidden", message: "Not your restaurant" }); return; }
 
   const [deleted] = await db.delete(menuItemsTable)
-    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.restaurantId, restaurantId)))
+    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.storeId, restaurantId)))
     .returning();
 
   if (!deleted) { res.status(404).json({ error: "not_found", message: "Item not found" }); return; }

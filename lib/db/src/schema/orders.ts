@@ -2,7 +2,7 @@ import { pgTable, serial, text, timestamp, integer, real, pgEnum, jsonb, boolean
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
-import { restaurantsTable } from "./restaurants";
+import { restaurantsTable } from "./stores";
 
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",

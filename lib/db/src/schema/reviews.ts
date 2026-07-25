@@ -1,7 +1,7 @@
 import { pgTable, serial, integer, real, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 import { ordersTable } from "./orders";
-import { restaurantsTable } from "./restaurants";
+import { restaurantsTable } from "./stores";
 
 export const reviewsTable = pgTable("reviews", {
   id: serial("id").primaryKey(),

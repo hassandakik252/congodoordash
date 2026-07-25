@@ -1,7 +1,7 @@
 import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { restaurantsTable } from "./restaurants";
+import { storesTable } from "./stores";
 
 /**
  * Product categories / aisles, per store. Grocery, retail and pharmacy catalogs
@@ -11,7 +11,7 @@ import { restaurantsTable } from "./restaurants";
  */
 export const categoriesTable = pgTable("categories", {
   id: serial("id").primaryKey(),
-  storeId: integer("store_id").notNull().references(() => restaurantsTable.id),
+  storeId: integer("store_id").notNull().references(() => storesTable.id),
   name: text("name").notNull(),
   parentId: integer("parent_id"),        // self-FK for nested aisles; null = top level
   sortOrder: integer("sort_order").notNull().default(0),
