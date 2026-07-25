@@ -3,14 +3,13 @@ name: Expo dependency firewall
 description: Environment limitation affecting the imported Expo workspace install.
 ---
 
-The imported API and admin workflows can be installed and run independently of
-the mobile workspace. A full frozen pnpm install currently reaches the package
-firewall but is rejected while downloading Expo CLI's transitive `tar` package;
-the API/database dependency closure succeeds.
+The imported workspace now installs successfully. The package firewall rejected
+the lockfile's older transitive `tar` and `shell-quote` versions, so the root
+pnpm manifest pins compatible newer patches without changing the Expo SDK.
 
-**Why:** Keeping the existing Expo SDK and lockfile intact avoids an unrelated
-dependency migration while still making the backend and admin console usable.
+**Why:** Keeping the existing Expo SDK and direct dependencies intact avoids an
+unrelated dependency migration while satisfying the package firewall.
 
-**How to apply:** Retry the full mobile install in a later session before
-changing Expo versions or the lockfile; do not treat the API/admin setup as
-blocked by this limitation.
+**How to apply:** If another firewall rejection appears, inspect the direct
+parent and prefer a compatible root pnpm override before changing Expo
+versions. The current mobile typecheck and iOS/Android bundle build pass.

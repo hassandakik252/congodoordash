@@ -1,1 +1,1 @@
-- [Expo dependency firewall](expo-dependency-firewall.md) — the API/admin setup works independently; the full Expo install is blocked by a firewall rejection for transitive tar.
+- [Expo dependency firewall](expo-dependency-firewall.md) — root pnpm overrides keep Expo's transitive packages compatible with the Replit package firewall.
