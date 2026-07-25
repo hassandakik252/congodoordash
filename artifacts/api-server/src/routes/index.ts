@@ -14,6 +14,7 @@ import uploadsRouter from "./uploads";
 import kycRouter from "./kyc";
 import settingsRouter from "./settings";
 import verifyRouter from "./verify";
+import messagesRouter from "./messages";
 
 const router: IRouter = Router();
 
@@ -23,6 +24,7 @@ router.use("/auth", authRouter);
 router.use("/stores", restaurantsRouter);
 router.use("/restaurants", restaurantsRouter);
 router.use("/orders", ordersRouter);
+router.use("/orders", messagesRouter);
 router.use("/driver/available-orders", (req, _res, next) => {
   req.url = "/available";
   next();

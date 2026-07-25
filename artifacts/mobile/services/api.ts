@@ -308,6 +308,11 @@ export const orderApi = {
   availableForDriver: () => request<any[]>("/orders/available"),
   myDriverOrders: () => request<any[]>("/orders/my-orders"),
 
+  // Per-order chat
+  messages: (orderId: number) => request<any[]>(`/orders/${orderId}/messages`),
+  sendMessage: (orderId: number, body: string) =>
+    request<any>(`/orders/${orderId}/messages`, { method: "POST", body: JSON.stringify({ body }) }),
+
   /** Shopper (store owner or assigned driver) records grocery picking results. */
   pick: (
     id: number,

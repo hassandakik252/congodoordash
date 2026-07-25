@@ -2,6 +2,7 @@ export * from "./users";
 export * from "./kyc_documents";
 export * from "./settings";
 export * from "./verification_codes";
+export * from "./order_messages";
 export * from "./stores";
 export * from "./categories";
 export * from "./products";

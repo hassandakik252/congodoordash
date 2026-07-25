@@ -295,7 +295,11 @@ export default function OrderDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </Pressable>
         <Text style={styles.title}>{t("orderDetails")}</Text>
-        {isActive ? <LivePulse label="Live" color={Colors.primary} /> : <View style={{ width: 60 }} />}
+        {order && isActive ? (
+          <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${orderId}` as any)}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.primary} />
+          </Pressable>
+        ) : <View style={{ width: 60 }} />}
       </View>
 
       {isLoading ? (
@@ -687,6 +691,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   title: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  chatBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.primary + "1A", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.primary + "55" },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   errorText: { fontSize: 16, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
 
