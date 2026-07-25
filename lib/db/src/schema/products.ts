@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { storesTable } from "./stores";
@@ -44,6 +44,13 @@ export const productsTable = pgTable("menu_items", {
   barcode: text("barcode"),
   brand: text("brand"),
   requiresPrescription: boolean("requires_prescription").notNull().default(false), // pharmacy Rx items
+  // Option groups (size, extras, ...). Each group has options with a price delta.
+  modifiers: jsonb("modifiers").$type<Array<{
+    name: string;
+    required: boolean;
+    multiple: boolean; // true = checkboxes, false = single choice
+    options: Array<{ label: string; price: number }>;
+  }> | null>(),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

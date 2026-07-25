@@ -69,6 +69,7 @@ export const ordersTable = pgTable("orders", {
     substituteName?: string;
     finalPrice?: number;              // charged line total (overrides price*quantity) for substitution/weight
     approved?: boolean | null;        // customer decision on a substitution (null/undefined = awaiting)
+    modifiers?: Array<{ label: string; price: number }>; // selected options (price already in `price`)
   }>>(),
   subtotal: real("subtotal").notNull(),
   deliveryFee: real("delivery_fee").notNull(),

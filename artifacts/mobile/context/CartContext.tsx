@@ -1,12 +1,21 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Alert } from "react-native";
 
+export interface CartModifier { groupName: string; label: string; price: number }
+
 export interface CartItem {
   menuItemId: number;
   name: string;
-  price: number;
+  price: number;         // unit price incl. selected modifiers
   quantity: number;
   imageUrl?: string;
+  modifiers?: CartModifier[];
+  lineId?: string;       // identity (menuItemId + modifier signature); set on add
+}
+
+function makeLineId(menuItemId: number, modifiers?: CartModifier[]): string {
+  const sig = (modifiers ?? []).map(m => `${m.groupName}:${m.label}`).sort().join("|");
+  return sig ? `${menuItemId}#${sig}` : String(menuItemId);
 }
 
 interface CartContextValue {
@@ -15,8 +24,8 @@ interface CartContextValue {
   restaurantName: string;
   deliveryFee: number;
   addItem: (item: CartItem, restaurantId: number, restaurantName: string, deliveryFee: number) => void;
-  removeItem: (menuItemId: number) => void;
-  updateQuantity: (menuItemId: number, quantity: number) => void;
+  removeItem: (lineId: string) => void;
+  updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
   subtotal: number;
   total: number;
@@ -32,6 +41,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [deliveryFee, setDeliveryFee] = useState(0);
 
   const addItem = (item: CartItem, rId: number, rName: string, rDeliveryFee: number) => {
+    const lineId = makeLineId(item.menuItemId, item.modifiers);
+    const withId = { ...item, lineId };
     if (restaurantId && restaurantId !== rId) {
       // Different restaurant — ask before clearing existing cart
       Alert.alert(
@@ -43,7 +54,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             text: "Vider et ajouter",
             style: "destructive",
             onPress: () => {
-              setItems([{ ...item, quantity: 1 }]);
+              setItems([{ ...withId, quantity: 1 }]);
               setRestaurantId(rId);
               setRestaurantName(rName);
               setDeliveryFee(rDeliveryFee);
@@ -54,29 +65,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     setItems(prev => {
-      const existing = prev.find(i => i.menuItemId === item.menuItemId);
+      const existing = prev.find(i => i.lineId === lineId);
       if (existing) {
-        return prev.map(i =>
-          i.menuItemId === item.menuItemId ? { ...i, quantity: i.quantity + 1 } : i
-        );
+        return prev.map(i => i.lineId === lineId ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      return [...prev, { ...item, quantity: 1 }];
+      return [...prev, { ...withId, quantity: 1 }];
     });
     setRestaurantId(rId);
     setRestaurantName(rName);
     setDeliveryFee(rDeliveryFee);
   };
 
-  const removeItem = (menuItemId: number) => {
-    setItems(prev => prev.filter(i => i.menuItemId !== menuItemId));
+  const removeItem = (lineId: string) => {
+    setItems(prev => prev.filter(i => (i.lineId ?? String(i.menuItemId)) !== lineId));
   };
 
-  const updateQuantity = (menuItemId: number, quantity: number) => {
+  const updateQuantity = (lineId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(menuItemId);
+      removeItem(lineId);
       return;
     }
-    setItems(prev => prev.map(i => i.menuItemId === menuItemId ? { ...i, quantity } : i));
+    setItems(prev => prev.map(i => (i.lineId ?? String(i.menuItemId)) === lineId ? { ...i, quantity } : i));
   };
 
   const clearCart = () => {

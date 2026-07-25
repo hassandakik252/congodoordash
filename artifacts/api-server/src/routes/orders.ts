@@ -44,6 +44,7 @@ const createOrderSchema = z.object({
   items: z.array(z.object({
     menuItemId: z.number().int().positive(),
     quantity: z.number().int().positive(),
+    modifiers: z.array(z.object({ groupName: z.string(), label: z.string() })).optional(),
   })).min(1),
   deliveryAddress: z.string().min(1),
   paymentMethod: z.enum(["cash", "mobile_money", "card"]),
@@ -169,11 +170,37 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
 
   const menuItemMap = new Map(menuItems.map(m => [m.id, m]));
 
-  const orderItems = items.map(i => {
+  let orderItems: OrderItem[];
+  try {
+  orderItems = items.map(i => {
     const menuItem = menuItemMap.get(i.menuItemId);
     if (!menuItem) throw new Error(`Menu item ${i.menuItemId} not found`);
-    return { menuItemId: i.menuItemId, name: menuItem.name, price: menuItem.price, quantity: i.quantity };
+
+    // Server-authoritative modifier pricing: validate each selected option
+    // against the product's defined modifiers and take the price from the DB.
+    const selected: Array<{ label: string; price: number }> = [];
+    let modTotal = 0;
+    for (const sel of i.modifiers ?? []) {
+      const group = (menuItem.modifiers ?? []).find(g => g.name === sel.groupName);
+      const opt = group?.options.find(o => o.label === sel.label);
+      if (!opt) throw new Error(`Invalid modifier "${sel.label}" for item ${i.menuItemId}`);
+      selected.push({ label: `${sel.groupName}: ${opt.label}`, price: opt.price });
+      modTotal += opt.price;
+    }
+
+    const unitPrice = menuItem.price + modTotal;
+    return {
+      menuItemId: i.menuItemId,
+      name: menuItem.name,
+      price: unitPrice,
+      quantity: i.quantity,
+      ...(selected.length ? { modifiers: selected } : {}),
+    };
   });
+  } catch (e) {
+    res.status(400).json({ error: "invalid_item", message: (e as Error).message });
+    return;
+  }
 
   const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const deliveryFee = restaurant.deliveryFee;

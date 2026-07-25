@@ -147,7 +147,11 @@ export default function CartScreen() {
 
       await orderApi.create({
         restaurantId,
-        items: items.map(i => ({ menuItemId: i.menuItemId, quantity: i.quantity })),
+        items: items.map(i => ({
+          menuItemId: i.menuItemId,
+          quantity: i.quantity,
+          modifiers: i.modifiers?.map(m => ({ groupName: m.groupName, label: m.label })),
+        })),
         deliveryAddress,
         paymentMethod: payment,
         paymentProvider: payment === "mobile_money" && mobileProvider ? mobileProvider : undefined,
@@ -229,14 +233,14 @@ export default function CartScreen() {
                 <View style={styles.qtyRow}>
                   <Pressable
                     style={styles.qtyBtn}
-                    onPress={() => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateQuantity(item.menuItemId, item.quantity - 1); }}
+                    onPress={() => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateQuantity(item.lineId ?? String(item.menuItemId), item.quantity - 1); }}
                   >
                     <Ionicons name="remove" size={18} color={Colors.textPrimary} />
                   </Pressable>
                   <Text style={styles.qty}>{item.quantity}</Text>
                   <Pressable
                     style={[styles.qtyBtn, styles.qtyBtnAdd]}
-                    onPress={() => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateQuantity(item.menuItemId, item.quantity + 1); }}
+                    onPress={() => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateQuantity(item.lineId ?? String(item.menuItemId), item.quantity + 1); }}
                   >
                     <Ionicons name="add" size={18} color="#fff" />
                   </Pressable>

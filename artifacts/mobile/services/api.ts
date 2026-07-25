@@ -177,7 +177,7 @@ export const notificationApi = {
 // ── Order API types ──────────────────────────────────────────────────────────
 export interface CreateOrderPayload {
   restaurantId: number;
-  items: Array<{ menuItemId: number; quantity: number }>;
+  items: Array<{ menuItemId: number; quantity: number; modifiers?: Array<{ groupName: string; label: string }> }>;
   deliveryAddress: string;
   paymentMethod: "cash" | "mobile_money" | "card";
   paymentProvider?: string;

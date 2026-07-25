@@ -16,6 +16,13 @@ function withOpenNow<T extends { isOpen: boolean; businessHours?: any }>(store: 
 const verticalValues = ["restaurant", "grocery", "pharmacy", "retail", "drinks"] as const;
 const productUnitValues = ["each", "kg", "g", "L", "pack"] as const;
 
+const modifiersSchema = z.array(z.object({
+  name: z.string().min(1),
+  required: z.boolean(),
+  multiple: z.boolean(),
+  options: z.array(z.object({ label: z.string().min(1), price: z.number().nonnegative() })).min(1),
+})).nullable().optional();
+
 const createRestaurantSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
@@ -43,6 +50,7 @@ const createMenuItemSchema = z.object({
   barcode: z.string().optional(),
   brand: z.string().optional(),
   requiresPrescription: z.boolean().optional(),
+  modifiers: modifiersSchema,
 });
 
 const updateMenuItemSchema = z.object({
@@ -59,6 +67,7 @@ const updateMenuItemSchema = z.object({
   barcode: z.string().optional(),
   brand: z.string().optional(),
   requiresPrescription: z.boolean().optional(),
+  modifiers: modifiersSchema,
 });
 
 // Helper — verify restaurant is owned by requester
@@ -382,6 +391,7 @@ router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), 
   if (parsed.data.barcode !== undefined) updates.barcode = parsed.data.barcode;
   if (parsed.data.brand !== undefined) updates.brand = parsed.data.brand;
   if (parsed.data.requiresPrescription !== undefined) updates.requiresPrescription = parsed.data.requiresPrescription;
+  if (parsed.data.modifiers !== undefined) updates.modifiers = parsed.data.modifiers;
 
   const [updated] = await db.update(menuItemsTable)
     .set(updates)

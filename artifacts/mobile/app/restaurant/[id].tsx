@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, StyleSheet, FlatList, Pressable, TextInput,
-  Platform, ActivityIndicator, Alert, SectionList,
+  Platform, ActivityIndicator, Alert, SectionList, Modal, ScrollView,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -82,23 +82,69 @@ export default function RestaurantDetailScreen() {
   }, {});
   const sections = Object.entries(grouped).map(([title, data]) => ({ title, data }));
 
-  const handleAddToCart = (item: any) => {
+  const flashAdded = (id: number) => {
+    setAddedItems(prev => new Set([...prev, id]));
+    setTimeout(() => setAddedItems(prev => { const n = new Set(prev); n.delete(id); return n; }), 1500);
+  };
+
+  const addToCart = (item: any, modifiers?: Array<{ groupName: string; label: string; price: number }>) => {
     if (!restaurant) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const modTotal = (modifiers ?? []).reduce((s, m) => s + m.price, 0);
     addItem(
-      { menuItemId: item.id, name: item.name, price: item.price, quantity: 1, imageUrl: item.imageUrl },
-      restaurant.id,
-      restaurant.name,
-      restaurant.deliveryFee
+      { menuItemId: item.id, name: item.name, price: item.price + modTotal, quantity: 1, imageUrl: item.imageUrl, modifiers },
+      restaurant.id, restaurant.name, restaurant.deliveryFee,
     );
-    setAddedItems(prev => new Set([...prev, item.id]));
-    setTimeout(() => {
-      setAddedItems(prev => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
-      });
-    }, 1500);
+    flashAdded(item.id);
+  };
+
+  // Modifier selection modal state
+  const [modItem, setModItem] = useState<any | null>(null);
+  const [modSel, setModSel] = useState<Record<string, string[]>>({});
+
+  const handleAddToCart = (item: any) => {
+    if (item.modifiers && item.modifiers.length > 0) {
+      // Preselect the first option of each required single-choice group.
+      const init: Record<string, string[]> = {};
+      for (const g of item.modifiers) {
+        if (g.required && !g.multiple && g.options[0]) init[g.name] = [g.options[0].label];
+      }
+      setModSel(init);
+      setModItem(item);
+    } else {
+      addToCart(item);
+    }
+  };
+
+  const toggleMod = (group: any, label: string) => {
+    setModSel(prev => {
+      const cur = prev[group.name] ?? [];
+      if (group.multiple) {
+        return { ...prev, [group.name]: cur.includes(label) ? cur.filter(l => l !== label) : [...cur, label] };
+      }
+      return { ...prev, [group.name]: [label] };
+    });
+  };
+
+  const confirmMods = () => {
+    if (!modItem) return;
+    // Required groups must have a selection.
+    for (const g of modItem.modifiers) {
+      if (g.required && !(modSel[g.name]?.length)) {
+        Alert.alert(t("error"), `${g.name} ${language === "fr" ? "requis" : "required"}`);
+        return;
+      }
+    }
+    const selected: Array<{ groupName: string; label: string; price: number }> = [];
+    for (const g of modItem.modifiers) {
+      for (const label of modSel[g.name] ?? []) {
+        const opt = g.options.find((o: any) => o.label === label);
+        if (opt) selected.push({ groupName: g.name, label, price: opt.price });
+      }
+    }
+    addToCart(modItem, selected);
+    setModItem(null);
+    setModSel({});
   };
 
   const cartFromHere = restaurantId === numericId;
@@ -278,6 +324,38 @@ export default function RestaurantDetailScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* ── Modifier selection modal ── */}
+      <Modal visible={!!modItem} transparent animationType="slide" onRequestClose={() => setModItem(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle} numberOfLines={1}>{modItem?.name}</Text>
+              <Pressable onPress={() => setModItem(null)}><Ionicons name="close" size={24} color={Colors.textMuted} /></Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 380 }}>
+              {(modItem?.modifiers ?? []).map((g: any) => (
+                <View key={g.name} style={styles.modGroup}>
+                  <Text style={styles.modGroupName}>{g.name}{g.required ? " *" : ""}</Text>
+                  {g.options.map((o: any) => {
+                    const chosen = (modSel[g.name] ?? []).includes(o.label);
+                    return (
+                      <Pressable key={o.label} style={styles.modOption} onPress={() => toggleMod(g, o.label)}>
+                        <Ionicons name={chosen ? (g.multiple ? "checkbox" : "radio-button-on") : (g.multiple ? "square-outline" : "radio-button-off")} size={20} color={chosen ? Colors.primary : Colors.textMuted} />
+                        <Text style={styles.modOptionLabel}>{o.label}</Text>
+                        {o.price > 0 && <Text style={styles.modOptionPrice}>+{formatCurrency(o.price)}</Text>}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
+            </ScrollView>
+            <Pressable style={styles.modConfirm} onPress={confirmMods}>
+              <Text style={styles.modConfirmText}>{language === "fr" ? "Ajouter au panier" : "Add to cart"}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -364,6 +442,17 @@ const styles = StyleSheet.create({
   addBtnSuccess: { backgroundColor: Colors.success },
   addBtnDisabled: { backgroundColor: Colors.textMuted, opacity: 0.5 },
   errorText: { fontSize: 16, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  modalSheet: { backgroundColor: Colors.dark, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderWidth: 1, borderColor: Colors.border },
+  modalHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  modalTitle: { flex: 1, fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.textPrimary, marginRight: 12 },
+  modGroup: { marginBottom: 16 },
+  modGroupName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textMuted, marginBottom: 8 },
+  modOption: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+  modOptionLabel: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textPrimary },
+  modOptionPrice: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+  modConfirm: { height: 52, borderRadius: 14, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  modConfirmText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
   cartBar: {
     position: "absolute", left: 16, right: 16,
   },

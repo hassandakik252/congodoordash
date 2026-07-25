@@ -71,6 +71,13 @@
       "when": 1785019316995,
       "tag": "0009_wooden_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785019974064,
+      "tag": "0010_flawless_johnny_storm",
+      "breakpoints": true
     }
   ]
 }
