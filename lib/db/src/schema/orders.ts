@@ -76,6 +76,7 @@ export const ordersTable = pgTable("orders", {
   notes: text("notes"),
   promoCode: text("promo_code"),
   discountAmount: real("discount_amount").notNull().default(0),
+  tip: real("tip").notNull().default(0), // driver tip, added to total
   cashConfirmed: boolean("cash_confirmed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

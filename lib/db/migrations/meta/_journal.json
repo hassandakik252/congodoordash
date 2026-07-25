@@ -50,6 +50,13 @@
       "when": 1785017993073,
       "tag": "0006_tired_lady_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785018391711,
+      "tag": "0007_optimal_captain_cross",
+      "breakpoints": true
     }
   ]
 }

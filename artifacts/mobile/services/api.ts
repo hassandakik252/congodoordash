@@ -179,6 +179,7 @@ export interface CreateOrderPayload {
   notes?: string;
   driverInstructions?: string;
   promoCode?: string;
+  tip?: number;
 }
 
 // PROMO CODES

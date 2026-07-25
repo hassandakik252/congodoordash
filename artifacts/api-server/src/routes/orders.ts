@@ -52,6 +52,7 @@ const createOrderSchema = z.object({
   notes: z.string().optional(),
   driverInstructions: z.string().optional(),
   promoCode: z.string().optional(),
+  tip: z.number().nonnegative().optional(),
 });
 
 const updateStatusSchema = z.object({
@@ -121,8 +122,9 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   const {
     restaurantId, items, deliveryAddress,
     paymentMethod, paymentProvider, paymentReference, paymentPhone,
-    notes, driverInstructions, promoCode,
+    notes, driverInstructions, promoCode, tip: tipInput,
   } = parsed.data;
+  const tip = tipInput ?? 0;
 
   const [restaurant] = await db
     .select()
@@ -181,7 +183,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   }
 
   const discountAmount = appliedPromo?.discountAmount ?? 0;
-  const total = Math.max(0, subtotal + deliveryFee - discountAmount);
+  const total = Math.max(0, subtotal + deliveryFee - discountAmount + tip);
 
   // If a reference is provided at order creation, mark as submitted immediately
   const initialPaymentStatus = paymentMethod === "mobile_money" && paymentReference
@@ -236,6 +238,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
           notes,
           promoCode: appliedPromo?.code || null,
           discountAmount,
+          tip,
         })
         .returning();
 
@@ -699,7 +702,7 @@ router.patch("/:id/pick", requireAuth, async (req: AuthRequest, res) => {
     return next;
   });
 
-  const { subtotal, total } = recomputeTotals(newItems, order.deliveryFee, order.discountAmount);
+  const { subtotal, total } = recomputeTotals(newItems, order.deliveryFee, order.discountAmount, order.tip);
   const [updated] = await db.update(ordersTable)
     .set({ items: newItems, subtotal, total, updatedAt: new Date() })
     .where(eq(ordersTable.id, id))
@@ -746,7 +749,7 @@ router.patch("/:id/approve-substitutions", requireAuth, requireRole("customer"),
     return { ...line, approved: decision };
   });
 
-  const { subtotal, total } = recomputeTotals(newItems, order.deliveryFee, order.discountAmount);
+  const { subtotal, total } = recomputeTotals(newItems, order.deliveryFee, order.discountAmount, order.tip);
   const [updated] = await db.update(ordersTable)
     .set({ items: newItems, subtotal, total, updatedAt: new Date() })
     .where(eq(ordersTable.id, id))
