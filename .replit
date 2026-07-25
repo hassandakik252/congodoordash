@@ -11,10 +11,10 @@ expertMode = true
 [userenv.shared]
 ADMIN_EMAIL = "admin@deliverlbh.com"
 APP_ENV = "development"
-EXPO_PUBLIC_DOMAIN = "localhost:8080"
+EXPO_PUBLIC_DOMAIN = "localhost:5000"
 NODE_ENV = "development"
 PAYMENT_PROVIDER = "mock"
-PORT = "8080"
+PORT = "5000"
 PUSH_DISABLED = "1"
 
 [workflows]
@@ -29,40 +29,20 @@ author = "agent"
 task = "workflow.run"
 args = "Deliver LBH API"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Deliver LBH Admin"
-
 [[workflows.workflow]]
 name = "Deliver LBH API"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "console"
+outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "if [ -z \"$ADMIN_PASSWORD\" ]; then echo ADMIN_PASSWORD_NOT_AVAILABLE; exit 1; fi; if [ -z \"$JWT_SECRET\" ]; then echo JWT_SECRET_NOT_AVAILABLE; exit 1; fi; echo REQUIRED_SECRETS_PRESENT; corepack pnpm --filter @workspace/api-server exec tsx src/create-admin.ts && corepack pnpm --filter @workspace/api-server run dev"
-waitForPort = 8080
-
-[[workflows.workflow]]
-name = "Deliver LBH Admin"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python3 -m http.server 5000 --directory artifacts/admin-panel"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 8080
 externalPort = 80
 
 [[ports]]

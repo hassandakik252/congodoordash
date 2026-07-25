@@ -99,7 +99,7 @@ const $ = (id) => document.getElementById(id);
 const CDF = (n) => (Math.round(Number(n)||0)).toLocaleString("fr-FR") + " CDF";
 const fdate = (s) => s ? new Date(s).toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-$("apiBase").value = `${location.protocol}//${location.hostname}:8080/api`;
+$("apiBase").value = `${location.origin}/api`;
 
 async function api(path, opts={}) {
   const res = await fetch(S.base + path, {
