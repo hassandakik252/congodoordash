@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { restaurantsTable, menuItemsTable } from "@workspace/db/schema";
-import { eq, ilike, or, and } from "drizzle-orm";
+import { eq, ilike, or, and, sql } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
 
@@ -232,6 +232,54 @@ router.get("/:id/menu", async (req, res) => {
     .orderBy(menuItemsTable.category, menuItemsTable.name);
 
   res.json(items);
+});
+
+// GET /stores/:id/products — paginated, searchable catalog (grocery/retail/pharmacy)
+// Query: ?search= ?categoryId= ?page=1 ?pageSize=20  — available items only.
+// Returns { items, page, pageSize, total, hasMore } for large catalogs.
+router.get("/:id/products", async (req, res) => {
+  const storeId = parseInt(String(req.params.id));
+  if (isNaN(storeId)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
+
+  const { search, categoryId } = req.query as { search?: string; categoryId?: string };
+  const page = Math.max(1, parseInt(String(req.query.page ?? "1")) || 1);
+  const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize ?? "20")) || 20));
+
+  const conditions = [
+    eq(menuItemsTable.storeId, storeId),
+    eq(menuItemsTable.isAvailable, true),
+  ];
+  if (search) {
+    const term = `%${search}%`;
+    conditions.push(
+      or(
+        ilike(menuItemsTable.name, term),
+        ilike(menuItemsTable.brand ?? "", term),
+        ilike(menuItemsTable.description ?? "", term),
+      )!,
+    );
+  }
+  if (categoryId) {
+    const cid = parseInt(categoryId);
+    if (!isNaN(cid)) conditions.push(eq(menuItemsTable.categoryId, cid));
+  }
+
+  const where = and(...conditions);
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(menuItemsTable)
+    .where(where);
+
+  const items = await db
+    .select()
+    .from(menuItemsTable)
+    .where(where)
+    .orderBy(menuItemsTable.category, menuItemsTable.name)
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  res.json({ items, page, pageSize, total, hasMore: page * pageSize < total });
 });
 
 // POST /restaurants/:id/menu — add menu item

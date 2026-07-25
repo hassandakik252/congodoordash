@@ -8,6 +8,15 @@ import { createNotification, notifyAdmins } from "../lib/notify";
 
 const router = Router();
 
+/** Thrown inside the create-order transaction when a stock-tracked product
+ *  can't cover the requested quantity, so the whole order rolls back. */
+class OutOfStockError extends Error {
+  constructor(public itemName: string) {
+    super(`Out of stock: ${itemName}`);
+    this.name = "OutOfStockError";
+  }
+}
+
 const createOrderSchema = z.object({
   restaurantId: z.number().int().positive(),
   items: z.array(z.object({
@@ -158,37 +167,77 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
     ? "submitted"
     : "pending";
 
-  const [order] = await db
-    .insert(ordersTable)
-    .values({
-      customerId: req.user!.id,
-      restaurantId,
-      restaurantName: restaurant.name,
-      items: orderItems,
-      deliveryAddress,
-      paymentMethod,
-      paymentStatus: initialPaymentStatus as any,
-      paymentProvider: paymentProvider || null,
-      paymentReference: paymentReference || null,
-      paymentPhone: paymentPhone || null,
-      paymentRequestedAt: (paymentMethod === "mobile_money" && paymentReference) ? new Date() : null,
-      customerPhone: customer?.phone || null,
-      driverInstructions: driverInstructions || null,
-      subtotal,
-      deliveryFee,
-      total,
-      notes,
-      promoCode: appliedPromo?.code || null,
-      discountAmount,
-    })
-    .returning();
+  // Products with a non-null stockQuantity are inventory-tracked (grocery /
+  // retail / pharmacy); restaurants leave it null = unlimited. Decrement stock
+  // atomically and create the order in one transaction so they never diverge
+  // under concurrent orders. If any item can't cover the quantity, the whole
+  // transaction rolls back and no stock is consumed.
+  const stockTracked = orderItems
+    .map(oi => ({ oi, product: menuItemMap.get(oi.menuItemId)! }))
+    .filter(({ product }) => product?.stockQuantity !== null && product?.stockQuantity !== undefined);
 
-  // Increment promo code usage count — awaited so failure is logged and visible
-  if (appliedPromo) {
-    await db.update(promoCodesTable)
-      .set({ usedCount: sql`${promoCodesTable.usedCount} + 1` })
-      .where(eq(promoCodesTable.id, appliedPromo.id))
-      .catch(err => console.error("[promo] Failed to increment usedCount for promo", appliedPromo!.id, err));
+  let order: typeof ordersTable.$inferSelect;
+  try {
+    order = await db.transaction(async (tx) => {
+      for (const { oi } of stockTracked) {
+        const decremented = await tx
+          .update(menuItemsTable)
+          .set({ stockQuantity: sql`${menuItemsTable.stockQuantity} - ${oi.quantity}` })
+          .where(and(
+            eq(menuItemsTable.id, oi.menuItemId),
+            sql`${menuItemsTable.stockQuantity} >= ${oi.quantity}`,
+          ))
+          .returning({ id: menuItemsTable.id });
+        if (decremented.length === 0) {
+          throw new OutOfStockError(oi.name);
+        }
+      }
+
+      const [inserted] = await tx
+        .insert(ordersTable)
+        .values({
+          customerId: req.user!.id,
+          restaurantId,
+          restaurantName: restaurant.name,
+          items: orderItems,
+          deliveryAddress,
+          paymentMethod,
+          paymentStatus: initialPaymentStatus as any,
+          paymentProvider: paymentProvider || null,
+          paymentReference: paymentReference || null,
+          paymentPhone: paymentPhone || null,
+          paymentRequestedAt: (paymentMethod === "mobile_money" && paymentReference) ? new Date() : null,
+          customerPhone: customer?.phone || null,
+          driverInstructions: driverInstructions || null,
+          subtotal,
+          deliveryFee,
+          total,
+          notes,
+          promoCode: appliedPromo?.code || null,
+          discountAmount,
+        })
+        .returning();
+
+      // Increment promo usage in the same transaction so it only counts if the
+      // order actually commits.
+      if (appliedPromo) {
+        await tx.update(promoCodesTable)
+          .set({ usedCount: sql`${promoCodesTable.usedCount} + 1` })
+          .where(eq(promoCodesTable.id, appliedPromo.id));
+      }
+
+      return inserted;
+    });
+  } catch (err) {
+    if (err instanceof OutOfStockError) {
+      res.status(409).json({
+        error: "out_of_stock",
+        message: `${err.itemName} est en rupture de stock ou la quantité demandée n'est pas disponible.`,
+        item: err.itemName,
+      });
+      return;
+    }
+    throw err;
   }
 
   // Notify restaurant owner of new order
