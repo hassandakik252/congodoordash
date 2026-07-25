@@ -6,6 +6,7 @@ import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
 import { createNotification, notifyAdmins } from "../lib/notify";
 import { recomputeTotals } from "../lib/pricing";
+import { isValidTransition, isClaimable, promoDiscount } from "../lib/orderRules";
 
 const router = Router();
 
@@ -167,14 +168,9 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
       .where(eq(promoCodesTable.code, normalized))
       .limit(1);
 
-    if (promo && promo.isActive
-      && !(promo.expiresAt && new Date(promo.expiresAt) < new Date())
-      && !(promo.maxUses !== null && promo.usedCount >= promo.maxUses)
-      && !(promo.minOrderAmount !== null && subtotal < promo.minOrderAmount)) {
-      const discountAmount = promo.type === "fixed"
-        ? Math.min(promo.value, subtotal)
-        : Math.round((subtotal * promo.value) / 100);
-      appliedPromo = { id: promo.id, code: promo.code, discountAmount };
+    if (promo) {
+      const discountAmount = promoDiscount(promo, subtotal);
+      if (discountAmount > 0) appliedPromo = { id: promo.id, code: promo.code, discountAmount };
     }
   }
 
@@ -380,11 +376,7 @@ router.post("/:id/accept", requireAuth, requireRole("driver"), async (req: AuthR
   // Restaurants: claim only when ready_for_pickup. Other verticals (driver
   // shops): claim early at confirmed/preparing too. Either way → picked_up,
   // after which the driver shops (PATCH /pick) and then delivers.
-  const claimable =
-    existing.status === "ready_for_pickup" ||
-    (existing.vertical !== "restaurant" && (existing.status === "confirmed" || existing.status === "preparing"));
-
-  if (!claimable) {
+  if (!isClaimable(existing.vertical, existing.status)) {
     res.status(409).json({ error: "not_claimable", message: "Cette commande n'est pas disponible pour le moment." });
     return;
   }
@@ -508,18 +500,7 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
   }
 
   // State machine: enforce valid status transitions
-  const validTransitions: Record<string, string[]> = {
-    pending:          ["confirmed", "cancelled"],
-    confirmed:        ["preparing", "cancelled"],
-    preparing:        ["ready_for_pickup", "cancelled"],
-    ready_for_pickup: ["cancelled"],   // accept is handled separately via POST /accept
-    picked_up:        ["delivered", "cancelled"],
-    delivered:        [],
-    cancelled:        [],
-  };
-
-  const allowed = validTransitions[order.status] ?? [];
-  if (!allowed.includes(status)) {
+  if (!isValidTransition(order.status, status)) {
     res.status(409).json({
       error: "invalid_transition",
       message: `Cannot move order from "${order.status}" to "${status}"`,
