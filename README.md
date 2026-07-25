@@ -75,18 +75,20 @@ leave unset.
 
 ## Roadmap
 
-This platform is being generalized from a restaurant-only app to multi-vertical.
-Delivery is phased:
+The platform has been generalized from a restaurant-only app to multi-vertical:
 
-1. **Foundation + vertical-aware schema** — this PR: project setup, admin seed,
+1. ✅ **Foundation + vertical-aware schema** — project setup, admin seed,
    `vertical` on stores, grocery fields on products, `categories` table.
-2. **Rename** `restaurants`→`stores`, `menu_items`→`products` (with an alias
-   route layer) + real migrations.
-3. **Grocery core** — inventory enforcement, paginated product search, aisle
-   browse, cart by quantity/weight.
-4. **Grocery advanced** — substitutions, weight-based price adjustment, the
-   driver picking/shopping flow.
-5. **Vertical polish** (pharmacy Rx flag, drinks age-check), admin panel, tests.
+2. ✅ **Generalize** `restaurants`→`stores`, `menu_items`→`products` (code-level
+   with backward-compatible aliases; canonical `/api/stores` endpoint).
+3. ✅ **Grocery core** — inventory enforcement (atomic stock decrement + 409
+   out-of-stock), paginated product search, aisle browse, vertical switcher.
+4. ✅ **Grocery advanced** — substitutions (shopper proposes → customer
+   approves), weight-based price adjustment, in-app shopper picking screen.
+5. ✅ **Vertical polish** (pharmacy Rx flag, drinks age-check), admin panel
+   (`artifacts/admin-panel`), auth rate-limiting + CORS allowlist, unit tests.
+
+Run `pnpm run typecheck` and `pnpm test` to verify.
 
 ## Typecheck / build
 
