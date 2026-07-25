@@ -114,6 +114,33 @@ testable: initiate, then POST the webhook with `{ transactionId, status }` and t
 (M-Pesa, Airtel, or e.g. Flutterwave/CinetPay/MaxiCash), register it in
 `getPaymentProvider()`, and set `PAYMENT_PROVIDER` + `PAYMENT_WEBHOOK_SECRET`.
 
+## Deployment (API)
+
+The API ships as a Docker image (`Dockerfile`) with a `docker-compose.yml` that
+also runs Postgres.
+
+```bash
+# 1. Bring up Postgres + the API
+JWT_SECRET=$(openssl rand -hex 32) \
+PUBLIC_URL=https://api.your-domain.com \
+docker compose up --build -d
+
+# 2. Apply migrations against the running DB (from the host)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/deliverlbh \
+  pnpm --filter @workspace/db run migrate
+
+# 3. Seed + create the admin (once)
+DATABASE_URL=... pnpm --filter @workspace/api-server exec tsx src/seed.ts
+DATABASE_URL=... ADMIN_PASSWORD=... pnpm --filter @workspace/api-server exec tsx src/create-admin.ts
+```
+
+Put a TLS-terminating reverse proxy (Caddy, Nginx, or your host's load balancer)
+in front of port 8080, set `PUBLIC_URL` to the public HTTPS URL (used to build
+image URLs), and `CORS_ORIGINS` to your web origins. For images at scale, switch
+`STORAGE_DRIVER` to a cloud driver instead of the `uploads` volume. Any managed
+Postgres (Neon, Supabase, RDS) works — just point `DATABASE_URL` at it and drop
+the `db` service.
+
 ## Building the mobile app (EAS)
 
 The app builds with [EAS Build](https://docs.expo.dev/build/introduction/).

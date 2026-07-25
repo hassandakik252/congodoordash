@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+.git
+**/dist
+**/*.tsbuildinfo
+uploads
+**/uploads
+pgdata
+.expo
+**/.expo
+*.log
+.env
+.env.*
+artifacts/mockup-sandbox
