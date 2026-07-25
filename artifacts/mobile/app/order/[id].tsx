@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Platform,
-  ActivityIndicator, Animated, TextInput, Alert,
+  ActivityIndicator, Animated, TextInput, Alert, Modal,
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
@@ -239,6 +239,48 @@ export default function OrderDetailScreen() {
     (i: any) => i.lineStatus === "substituted" && (i.approved === null || i.approved === undefined),
   );
 
+  // ── Shopper picking (store owner or assigned driver) ─────────────────────
+  const isShopper =
+    !!order &&
+    order.status !== "delivered" &&
+    order.status !== "cancelled" &&
+    (user?.role === "restaurant_owner" || (user?.role === "driver" && order?.driverId === user?.id));
+
+  const pickMutation = useMutation({
+    mutationFn: (items: Array<{ menuItemId: number; lineStatus: string; substituteName?: string; finalPrice?: number }>) =>
+      orderApi.pick(orderId, items as any),
+    onSuccess: () => {
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    },
+    onError: (err: any) => Alert.alert(t("error"), err.message || t("error")),
+  });
+
+  // Modal for substitute / weight price entry
+  const [pickModal, setPickModal] = useState<{ menuItemId: number; name: string; mode: "substitute" | "weight" } | null>(null);
+  const [subName, setSubName] = useState("");
+  const [subPrice, setSubPrice] = useState("");
+
+  const openPickModal = (item: any, mode: "substitute" | "weight") => {
+    setPickModal({ menuItemId: item.menuItemId, name: item.name, mode });
+    setSubName("");
+    setSubPrice(mode === "weight" ? String(item.price ?? "") : "");
+  };
+  const submitPickModal = () => {
+    if (!pickModal) return;
+    const price = parseFloat(subPrice);
+    if (isNaN(price) || price < 0) { Alert.alert(t("error"), language === "fr" ? "Prix invalide" : "Invalid price"); return; }
+    if (pickModal.mode === "substitute" && !subName.trim()) { Alert.alert(t("error"), language === "fr" ? "Nom du remplacement requis" : "Substitute name required"); return; }
+    pickMutation.mutate([{
+      menuItemId: pickModal.menuItemId,
+      lineStatus: pickModal.mode === "substitute" ? "substituted" : "weight_adjusted",
+      substituteName: pickModal.mode === "substitute" ? subName.trim() : undefined,
+      finalPrice: price,
+    }]);
+    setPickModal(null);
+  };
+
   const isCustomerOwner = user?.role === "customer" && order?.customerId === user?.id;
   const canSubmitRef =
     isCustomerOwner &&
@@ -383,6 +425,47 @@ export default function OrderDetailScreen() {
               );
             })}
           </View>
+
+          {/* ── SHOPPER PICKING (store owner / driver) ── */}
+          {isShopper && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{language === "fr" ? "Préparation / Picking" : "Picking"}</Text>
+              {order.items?.map((item: any, idx: number) => (
+                <View key={idx} style={styles.pickRow}>
+                  <View style={styles.pickRowTop}>
+                    <Text style={styles.pickName}>{item.quantity}× {item.name}</Text>
+                    {item.lineStatus && (
+                      <Text style={styles.pickStatus}>
+                        {item.lineStatus === "found" ? (language === "fr" ? "Trouvé" : "Found")
+                          : item.lineStatus === "out_of_stock" ? (language === "fr" ? "Rupture" : "Out")
+                          : item.lineStatus === "substituted" ? (language === "fr" ? "Remplacé" : "Substituted")
+                          : item.lineStatus === "weight_adjusted" ? (language === "fr" ? "Pesé" : "Weighed")
+                          : ""}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.pickBtns}>
+                    <Pressable style={[styles.pickBtn, item.lineStatus === "found" && styles.pickBtnActive]} disabled={pickMutation.isPending}
+                      onPress={() => pickMutation.mutate([{ menuItemId: item.menuItemId, lineStatus: "found" }])}>
+                      <Text style={styles.pickBtnText}>{language === "fr" ? "Trouvé" : "Found"}</Text>
+                    </Pressable>
+                    <Pressable style={[styles.pickBtn, item.lineStatus === "out_of_stock" && styles.pickBtnActiveErr]} disabled={pickMutation.isPending}
+                      onPress={() => pickMutation.mutate([{ menuItemId: item.menuItemId, lineStatus: "out_of_stock" }])}>
+                      <Text style={styles.pickBtnText}>{language === "fr" ? "Rupture" : "Out"}</Text>
+                    </Pressable>
+                    <Pressable style={[styles.pickBtn, item.lineStatus === "substituted" && styles.pickBtnActive]} disabled={pickMutation.isPending}
+                      onPress={() => openPickModal(item, "substitute")}>
+                      <Text style={styles.pickBtnText}>{language === "fr" ? "Remplacer" : "Sub"}</Text>
+                    </Pressable>
+                    <Pressable style={[styles.pickBtn, item.lineStatus === "weight_adjusted" && styles.pickBtnActive]} disabled={pickMutation.isPending}
+                      onPress={() => openPickModal(item, "weight")}>
+                      <Text style={styles.pickBtnText}>{language === "fr" ? "Peser" : "Weigh"}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* ── PRICE BREAKDOWN ── */}
           <View style={styles.section}>
@@ -549,6 +632,45 @@ export default function OrderDetailScreen() {
           <View style={{ height: insets.bottom + (Platform.OS === "web" ? 34 : 24) }} />
         </ScrollView>
       )}
+
+      {/* ── Substitute / Weigh price-entry modal ── */}
+      <Modal visible={!!pickModal} transparent animationType="fade" onRequestClose={() => setPickModal(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {pickModal?.mode === "substitute"
+                ? (language === "fr" ? "Remplacer l'article" : "Substitute item")
+                : (language === "fr" ? "Prix au poids" : "Weight price")}
+            </Text>
+            <Text style={styles.modalSub}>{pickModal?.name}</Text>
+            {pickModal?.mode === "substitute" && (
+              <TextInput
+                style={styles.modalInput}
+                value={subName}
+                onChangeText={setSubName}
+                placeholder={language === "fr" ? "Nom du remplacement" : "Substitute name"}
+                placeholderTextColor={Colors.placeholder}
+              />
+            )}
+            <TextInput
+              style={styles.modalInput}
+              value={subPrice}
+              onChangeText={setSubPrice}
+              keyboardType="numeric"
+              placeholder={language === "fr" ? "Prix final (CDF)" : "Final price (CDF)"}
+              placeholderTextColor={Colors.placeholder}
+            />
+            <View style={styles.modalActions}>
+              <Pressable style={[styles.modalBtn, styles.modalCancel]} onPress={() => setPickModal(null)}>
+                <Text style={styles.modalBtnText}>{t("cancel")}</Text>
+              </Pressable>
+              <Pressable style={[styles.modalBtn, styles.modalConfirm]} onPress={submitPickModal}>
+                <Text style={[styles.modalBtnText, { color: "#fff" }]}>{t("confirm")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -637,6 +759,25 @@ const styles = StyleSheet.create({
   subReject: { backgroundColor: Colors.error + "18", borderWidth: 1, borderColor: Colors.error + "55" },
   subApprove: { backgroundColor: Colors.primary },
   subBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  pickRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  pickRowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  pickName: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.textPrimary },
+  pickStatus: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.accent },
+  pickBtns: { flexDirection: "row", gap: 6 },
+  pickBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
+  pickBtnActive: { backgroundColor: Colors.primary + "33", borderColor: Colors.primary },
+  pickBtnActiveErr: { backgroundColor: Colors.error + "22", borderColor: Colors.error },
+  pickBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", paddingHorizontal: 28 },
+  modalCard: { backgroundColor: Colors.surface, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: Colors.border },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.textPrimary },
+  modalSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 4, marginBottom: 14 },
+  modalInput: { backgroundColor: Colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, height: 48, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textPrimary, marginBottom: 10 },
+  modalActions: { flexDirection: "row", gap: 10, marginTop: 6 },
+  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  modalCancel: { backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border },
+  modalConfirm: { backgroundColor: Colors.primary },
+  modalBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
 
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   summaryLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
