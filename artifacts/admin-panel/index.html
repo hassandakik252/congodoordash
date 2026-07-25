@@ -68,7 +68,7 @@
 <section id="login">
   <div class="logo">Deliver <span>LBH</span></div>
   <div class="sub">Console d'administration</div>
-  <div class="field"><label>URL de l'API</label><input id="apiBase" value="http://localhost:8080/api" /></div>
+  <div class="field"><label>URL de l'API</label><input id="apiBase" /></div>
   <div class="field"><label>Email</label><input id="email" type="email" value="admin@deliverlbh.com" /></div>
   <div class="field"><label>Mot de passe</label><input id="password" type="password" placeholder="••••••••" /></div>
   <button class="btn" id="loginBtn">Se connecter</button>
@@ -99,6 +99,7 @@ const $ = (id) => document.getElementById(id);
 const CDF = (n) => (Math.round(Number(n)||0)).toLocaleString("fr-FR") + " CDF";
 const fdate = (s) => s ? new Date(s).toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+$("apiBase").value = `${location.origin}/api`;
 
 async function api(path, opts={}) {
   const res = await fetch(S.base + path, {

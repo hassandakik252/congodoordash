@@ -164,13 +164,69 @@ DB additions: `admin` added to `user_role` enum; `is_active boolean` column on `
 
 ## Seed Data
 
-Run `pnpm --filter @workspace/api-server exec tsx src/seed.ts` to seed 6 restaurants:
-- Chez Mama Ngozi (Congolese)
-- Le Poulet d'Or (Chicken)
-- Pizza Roma (Pizza)
-- Dragon Palace (Chinese)
-- Quick Burger LBH (Fast Food)
-- Boissons Tropicales (Drinks)
+The Replit development database is migrated and seeded. The current demo data
+includes 10 stores across all 5 verticals, 59 products, 8 sample orders
+covering every status and payment state, 2 reviews, and ready-to-use accounts
+for every application role.
+
+### Demo accounts
+
+| Role | Email | Password | Notes |
+|------|-------|----------|-------|
+| Customer | `customer@deliverlbh.com` | `customer1234` | saved addresses |
+| Customer | `customer2@deliverlbh.com` | `customer1234` | Marie Tshilomba |
+| Driver (approved) | `driver@deliverlbh.com` | `driver1234` | Moto |
+| Driver (approved) | `driver2@deliverlbh.com` | `driver1234` | Pascal Nkulu, Moto |
+| Driver (pending) | `driver3@deliverlbh.com` | `driver1234` | Emmanuel Kalonji, Vélo |
+| Merchant | `owner@deliverlbh.com` | `admin1234` | owns 7 stores (6 restaurant + 1 grocery) |
+| Merchant | `owner2@deliverlbh.com` | `owner1234` | Sophie Kabila, owns pharmacy + retail |
+| Merchant | `owner3@deliverlbh.com` | `owner1234` | Jean-Pierre Mutombo, owns drinks bar |
+| Admin | `admin@deliverlbh.com` | `ADMIN_PASSWORD` secret | super-admin |
+
+### Stores seeded (10 total)
+
+| Vertical | Store |
+|----------|-------|
+| restaurant | Chez Mama Ngozi (Congolese) |
+| restaurant | Le Poulet d'Or (Chicken) |
+| restaurant | Pizza Roma (Pizza) |
+| restaurant | Dragon Palace (Chinese) |
+| restaurant | Quick Burger LBH (Fast Food) — closed |
+| restaurant | Boissons Tropicales (Drinks) |
+| grocery | Supermarché Katanga |
+| pharmacy | Pharmacie Santé Plus |
+| retail | Boutique Mode LBH |
+| drinks | Bar-Café Makasi |
+
+### Sample orders (8 total)
+
+Covers every order status and every payment state:
+
+| Status | Payment method | Payment status |
+|--------|----------------|----------------|
+| pending | cash | pending |
+| confirmed | mobile_money | submitted |
+| preparing | cash | pending |
+| ready_for_pickup | mobile_money | confirmed |
+| picked_up | cash | pending |
+| delivered | cash | paid (cashConfirmed: true) + review |
+| delivered | mobile_money | confirmed (paymentConfirmedAt set) + review |
+| cancelled | mobile_money | failed |
+
+The API is available through the **Deliver LBH API** workflow on port 8080
+(`GET /api/healthz` is the health check). The dependency-free admin console is
+available through the **Deliver LBH Admin** workflow on port 5000; it fills in
+the API host automatically in the Replit preview.
+
+The seed script can be rerun safely; it skips when stores already exist.
+To reseed from scratch: truncate `reviews`, `orders`, `menu_items`, `restaurants`,
+and non-admin `users` rows, then run:
+`corepack pnpm --filter @workspace/api-server exec tsx src/seed.ts`
+
+The mobile Expo package installs and builds successfully. The workspace keeps
+the imported Expo SDK versions unchanged while using root pnpm overrides for
+firewall-safe compatible patches of Expo CLI's transitive `tar` and
+`shell-quote` packages.
 
 ## Bug Fixes Applied (Audit Pass)
 

@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { UPLOAD_DIR } from "./lib/storage";
@@ -47,6 +48,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(UPLOAD_DIR));
 
 app.use("/api", router);
+
+// Serve the admin panel static files so the browser stays on one origin
+// and relative /api calls work without cross-origin port issues.
+// process.cwd() is artifacts/api-server when run via pnpm filter.
+const adminDir = path.join(process.cwd(), "../admin-panel");
+app.use(express.static(adminDir));
 
 // Global error handler — structured log + optional monitoring, JSON 500.
 // (Express 5 forwards rejected async handlers here.)

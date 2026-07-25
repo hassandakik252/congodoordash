@@ -1,0 +1,1 @@
+- [Expo dependency firewall](expo-dependency-firewall.md) — root pnpm overrides keep Expo's transitive packages compatible with the Replit package firewall.

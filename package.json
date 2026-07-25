@@ -11,6 +11,12 @@
   },
   "private": true,
   "packageManager": "pnpm@9.15.9",
+  "pnpm": {
+    "overrides": {
+      "tar": "7.5.22",
+      "shell-quote": "1.8.4"
+    }
+  },
   "engines": {
     "node": ">=20"
   },

@@ -1,0 +1,50 @@
+modules = ["nodejs-20", "web", "postgresql-16", "python-base-3.13"]
+
+[nix]
+channel = "stable-25_05"
+
+[agent]
+expertMode = true
+
+[userenv]
+
+[userenv.shared]
+ADMIN_EMAIL = "admin@deliverlbh.com"
+APP_ENV = "development"
+EXPO_PUBLIC_DOMAIN = "localhost:5000"
+NODE_ENV = "development"
+PAYMENT_PROVIDER = "mock"
+PORT = "5000"
+PUSH_DISABLED = "1"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Deliver LBH API"
+
+[[workflows.workflow]]
+name = "Deliver LBH API"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "if [ -z \"$ADMIN_PASSWORD\" ]; then echo ADMIN_PASSWORD_NOT_AVAILABLE; exit 1; fi; if [ -z \"$JWT_SECRET\" ]; then echo JWT_SECRET_NOT_AVAILABLE; exit 1; fi; echo REQUIRED_SECRETS_PRESENT; corepack pnpm --filter @workspace/api-server exec tsx src/create-admin.ts && corepack pnpm --filter @workspace/api-server run dev"
+waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
