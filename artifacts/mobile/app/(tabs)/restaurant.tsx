@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { pickAndUploadImage } from "@/utils/imageUpload";
+import StoreOnboarding from "@/components/StoreOnboarding";
 import { useLang } from "@/context/LanguageContext";
 import { restaurantApi } from "@/services/api";
 import { formatCurrency } from "@/utils/format";
@@ -250,12 +251,14 @@ export default function RestaurantProfileScreen() {
     );
   }
 
-  if (isError || !restaurant || !form) {
+  // No store yet → onboarding (create store + KYC upload).
+  if (isError || !restaurant) {
+    return <StoreOnboarding topPad={topPad} />;
+  }
+  if (!form) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: topPad }]}>
-        <Ionicons name="storefront-outline" size={64} color={Colors.textMuted} />
-        <Text style={styles.emptyTitle}>{t("noRestaurant")}</Text>
-        <Text style={styles.emptyDesc}>{t("noRestaurantDesc")}</Text>
+        <ActivityIndicator color={Colors.primary} size="large" />
       </View>
     );
   }

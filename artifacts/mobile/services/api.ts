@@ -111,6 +111,13 @@ export const restaurantApi = {
 // Vertical-neutral alias; prefer `storeApi` in new code.
 export const storeApi = restaurantApi;
 
+// KYC DOCUMENTS
+export const kycApi = {
+  list: () => request<any[]>("/kyc/documents"),
+  submit: (type: string, imageUrl: string) =>
+    request<any>("/kyc/documents", { method: "POST", body: JSON.stringify({ type, imageUrl }) }),
+};
+
 // VERIFICATION (email / phone OTP)
 export const verifyApi = {
   send: (channel: "email" | "phone") =>
