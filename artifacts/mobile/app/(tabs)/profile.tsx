@@ -12,7 +12,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useLang } from "@/context/LanguageContext";
 import { useCurrency } from "@/context/CurrencyContext";
-import { userApi } from "@/services/api";
+import { userApi, authApi, verifyApi } from "@/services/api";
 
 const APP_VERSION = "1.0.0";
 
@@ -21,6 +21,41 @@ export default function ProfileScreen() {
   const { user, logout, updateUser } = useAuth();
   const { t, language, setLanguage } = useLang();
   const { currency, setCurrency, usdRate } = useCurrency();
+
+  // ── Email / phone verification ────────────────────────────────────────────
+  const [verifyChannel, setVerifyChannel] = useState<"email" | "phone" | null>(null);
+  const [code, setCode] = useState("");
+  const [vBusy, setVBusy] = useState(false);
+  const fr = language === "fr";
+
+  const startVerify = async (channel: "email" | "phone") => {
+    setVBusy(true);
+    try {
+      const r = await verifyApi.send(channel);
+      setVerifyChannel(channel);
+      setCode(r.devCode ?? "");
+    } catch (e: any) {
+      Alert.alert(t("error"), e?.message || t("error"));
+    } finally {
+      setVBusy(false);
+    }
+  };
+  const confirmVerify = async () => {
+    if (!verifyChannel || !code.trim()) return;
+    setVBusy(true);
+    try {
+      await verifyApi.confirm(verifyChannel, code.trim());
+      const fresh = await authApi.me();
+      updateUser(fresh);
+      setVerifyChannel(null);
+      setCode("");
+      Alert.alert("✓", fr ? "Vérifié avec succès" : "Verified successfully");
+    } catch (e: any) {
+      Alert.alert(t("error"), e?.message || t("error"));
+    } finally {
+      setVBusy(false);
+    }
+  };
   const qc = useQueryClient();
 
   const [editing, setEditing] = useState(false);
@@ -174,6 +209,52 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
+        {/* Verification */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{fr ? "Vérification" : "Verification"}</Text>
+          {(["email", "phone"] as const).map(ch => {
+            const verified = ch === "email" ? !!(user as any)?.emailVerifiedAt : !!(user as any)?.phoneVerifiedAt;
+            const label = ch === "email" ? "Email" : (fr ? "Téléphone" : "Phone");
+            return (
+              <View key={ch} style={styles.verifyRow}>
+                <Ionicons name={ch === "email" ? "mail-outline" : "call-outline"} size={18} color={Colors.textMuted} />
+                <Text style={styles.verifyLabel}>{label}</Text>
+                {verified ? (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                    <Text style={styles.verifiedText}>{fr ? "Vérifié" : "Verified"}</Text>
+                  </View>
+                ) : (
+                  <Pressable style={styles.verifyBtn} disabled={vBusy} onPress={() => startVerify(ch)}>
+                    <Text style={styles.verifyBtnText}>{fr ? "Vérifier" : "Verify"}</Text>
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+          {verifyChannel && (
+            <View style={styles.codeBox}>
+              <Text style={styles.codeHint}>
+                {fr ? `Entrez le code envoyé (${verifyChannel === "email" ? "email" : "SMS"})` : `Enter the code sent by ${verifyChannel === "email" ? "email" : "SMS"}`}
+              </Text>
+              <View style={styles.codeRow}>
+                <TextInput
+                  style={styles.codeInput}
+                  value={code}
+                  onChangeText={setCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  placeholder="000000"
+                  placeholderTextColor={Colors.placeholder}
+                />
+                <Pressable style={styles.codeConfirm} disabled={vBusy} onPress={confirmVerify}>
+                  <Text style={styles.codeConfirmText}>{fr ? "Confirmer" : "Confirm"}</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Legal & Support */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("legalSupport")}</Text>
@@ -250,6 +331,18 @@ const styles = StyleSheet.create({
   langActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   langText: { fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   langActiveText: { color: "#fff" },
+  verifyRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
+  verifyLabel: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.textPrimary },
+  verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
+  verifiedText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.success },
+  verifyBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, backgroundColor: Colors.primary + "1A", borderWidth: 1, borderColor: Colors.primary + "55" },
+  verifyBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+  codeBox: { marginTop: 10, padding: 12, borderRadius: 12, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border },
+  codeHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginBottom: 8 },
+  codeRow: { flexDirection: "row", gap: 10 },
+  codeInput: { flex: 1, height: 44, backgroundColor: Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, color: Colors.textPrimary, fontFamily: "Inter_600SemiBold", fontSize: 16, letterSpacing: 4 },
+  codeConfirm: { paddingHorizontal: 18, borderRadius: 10, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center" },
+  codeConfirmText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
   menuItem: {
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: Colors.border,

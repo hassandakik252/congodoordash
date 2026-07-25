@@ -13,6 +13,7 @@ import paymentsRouter from "./payments";
 import uploadsRouter from "./uploads";
 import kycRouter from "./kyc";
 import settingsRouter from "./settings";
+import verifyRouter from "./verify";
 
 const router: IRouter = Router();
 
@@ -36,6 +37,7 @@ router.use("/payments", paymentsRouter);
 router.use("/uploads", uploadsRouter);
 router.use("/kyc", kycRouter);
 router.use("/settings", settingsRouter);
+router.use("/verify", verifyRouter);
 router.use(promoRouter);
 
 export default router;

@@ -30,7 +30,7 @@ const VEHICLE_TYPES: { value: VehicleType; icon: string; labelKey: string }[] = 
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
-  const { t } = useLang();
+  const { t, language } = useLang();
   const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,13 +40,14 @@ export default function RegisterScreen() {
   const [vehicleType, setVehicleType] = useState<VehicleType>("motorcycle");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   const handleRegister = async () => {
-    if (!name || !email || !phone || !password) return;
+    if (!name || !email || !phone || !password || !acceptTerms) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setLoading(true);
     try {
-      const body: any = { name, email: email.trim(), phone, password, role };
+      const body: any = { name, email: email.trim(), phone, password, role, acceptTerms: true };
       if (role === "driver") body.vehicleType = vehicleType;
       const { token, user } = await authApi.register(body);
       await login(token, user);
@@ -64,7 +65,7 @@ export default function RegisterScreen() {
     return t("driver");
   };
 
-  const valid = name && email && phone && password.length >= 6 && (role !== "driver" || vehicleType);
+  const valid = name && email && phone && password.length >= 6 && (role !== "driver" || vehicleType) && acceptTerms;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
@@ -160,6 +161,21 @@ export default function RegisterScreen() {
             </View>
           </View>
 
+          {/* Terms & Privacy acceptance */}
+          <Pressable style={styles.termsRow} onPress={() => setAcceptTerms(v => !v)}>
+            <Ionicons
+              name={acceptTerms ? "checkbox" : "square-outline"}
+              size={22}
+              color={acceptTerms ? Colors.primary : Colors.textMuted}
+            />
+            <Text style={styles.termsText}>
+              {language === "fr" ? "J'accepte les " : "I accept the "}
+              <Text style={styles.termsLink} onPress={() => router.push("/legal/privacy")}>
+                {language === "fr" ? "Conditions et la Politique de confidentialité" : "Terms & Privacy Policy"}
+              </Text>
+            </Text>
+          </Pressable>
+
           <Pressable
             style={({ pressed }) => [styles.primaryBtn, !valid && styles.disabledBtn, pressed && { opacity: 0.85 }]}
             onPress={handleRegister}
@@ -233,6 +249,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   disabledBtn: { opacity: 0.5 },
+  termsRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16, paddingHorizontal: 2 },
+  termsText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  termsLink: { color: Colors.primary, fontFamily: "Inter_600SemiBold" },
   primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   vehicleRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   vehicleBtn: {

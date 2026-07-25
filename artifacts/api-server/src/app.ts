@@ -1,10 +1,11 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { UPLOAD_DIR } from "./lib/storage";
+import { captureException } from "./lib/monitoring";
 
 const app: Express = express();
 
@@ -53,5 +54,14 @@ app.use("/api", router);
 // process.cwd() is artifacts/api-server when run via pnpm filter.
 const adminDir = path.join(process.cwd(), "../admin-panel");
 app.use(express.static(adminDir));
+
+// Global error handler — structured log + optional monitoring, JSON 500.
+// (Express 5 forwards rejected async handlers here.)
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  logger.error({ err, url: req.url, method: req.method }, "Unhandled route error");
+  captureException(err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: "internal_error", message: "Une erreur interne est survenue." });
+});
 
 export default app;

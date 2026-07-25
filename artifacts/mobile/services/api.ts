@@ -31,7 +31,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 // AUTH
 export const authApi = {
-  register: (body: { email: string; password: string; name: string; phone: string; role: string; vehicleType?: string }) =>
+  register: (body: { email: string; password: string; name: string; phone: string; role: string; vehicleType?: string; acceptTerms: boolean }) =>
     request<{ token: string; user: any }>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
 
   login: (email: string, password: string) =>
@@ -110,6 +110,21 @@ export const restaurantApi = {
 
 // Vertical-neutral alias; prefer `storeApi` in new code.
 export const storeApi = restaurantApi;
+
+// KYC DOCUMENTS
+export const kycApi = {
+  list: () => request<any[]>("/kyc/documents"),
+  submit: (type: string, imageUrl: string) =>
+    request<any>("/kyc/documents", { method: "POST", body: JSON.stringify({ type, imageUrl }) }),
+};
+
+// VERIFICATION (email / phone OTP)
+export const verifyApi = {
+  send: (channel: "email" | "phone") =>
+    request<{ ok: boolean; devCode?: string }>("/verify/send", { method: "POST", body: JSON.stringify({ channel }) }),
+  confirm: (channel: "email" | "phone", code: string) =>
+    request<{ ok: boolean; verified: boolean }>("/verify/confirm", { method: "POST", body: JSON.stringify({ channel, code }) }),
+};
 
 // SETTINGS
 export const settingsApi = {
