@@ -20,6 +20,7 @@ async function seed() {
     name: "Admin Owner",
     phone: "+243810000000",
     role: "restaurant_owner",
+    merchantStatus: "approved",
   }).returning();
   console.log(`Created system owner: ${owner.email}`);
 

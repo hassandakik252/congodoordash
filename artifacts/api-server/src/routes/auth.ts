@@ -67,6 +67,9 @@ router.post("/register", authLimiter, async (req, res) => {
     insertValues.driverStatus = "pending";
     insertValues.vehicleType = vehicleType ?? null;
   }
+  if (role === "restaurant_owner") {
+    insertValues.merchantStatus = "pending";
+  }
 
   const [user] = await db.insert(usersTable).values(insertValues).returning();
 
@@ -116,6 +119,10 @@ router.post("/login", authLimiter, async (req, res) => {
     res.status(403).json({ error: "driver_not_approved", message: msg });
     return;
   }
+
+  // Store owners are NOT blocked at login — a pending merchant signs in to set
+  // up their store and upload KYC. Their store stays hidden from customers
+  // until an admin approves them (enforced in the store list).
 
   const token = makeToken(user.id, user.role);
   res.json({ token, user: sanitizeUser(user) });

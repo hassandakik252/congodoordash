@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { restaurantsTable, menuItemsTable } from "@workspace/db/schema";
-import { eq, ilike, or, and, sql } from "drizzle-orm";
+import { restaurantsTable, menuItemsTable, usersTable } from "@workspace/db/schema";
+import { eq, ilike, or, and, sql, getTableColumns } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
 
@@ -72,7 +72,11 @@ async function requireOwnership(restaurantId: number, userId: number) {
 router.get("/", async (req, res) => {
   const { category, search, vertical } = req.query as { category?: string; search?: string; vertical?: string };
 
-  const conditions = [];
+  // Only show stores whose owner is approved (or a legacy null status). Pending
+  // and rejected merchants stay hidden from customers.
+  const conditions = [
+    sql`(${usersTable.merchantStatus} IS NULL OR ${usersTable.merchantStatus} = 'approved')`,
+  ];
   if (vertical && (verticalValues as readonly string[]).includes(vertical)) {
     conditions.push(eq(restaurantsTable.vertical, vertical as (typeof verticalValues)[number]));
   }
@@ -82,13 +86,15 @@ router.get("/", async (req, res) => {
       or(
         ilike(restaurantsTable.name, `%${search}%`),
         ilike(restaurantsTable.description ?? "", `%${search}%`)
-      )
+      )!,
     );
   }
 
-  const restaurants = conditions.length > 0
-    ? await db.select().from(restaurantsTable).where(and(...conditions))
-    : await db.select().from(restaurantsTable);
+  const restaurants = await db
+    .select(getTableColumns(restaurantsTable))
+    .from(restaurantsTable)
+    .leftJoin(usersTable, eq(restaurantsTable.ownerId, usersTable.id))
+    .where(and(...conditions));
 
   res.json(restaurants);
 });

@@ -15,7 +15,8 @@ export const usersTable = pgTable("users", {
   savedAddresses: jsonb("saved_addresses").$type<Array<{ label: string; address: string }>>(),
   isActive: boolean("is_active").notNull().default(true),
   driverStatus: text("driver_status"), // 'pending' | 'approved' | 'rejected' | null (drivers only)
-  vehicleType: text("vehicle_type"),   // 'motorcycle' | 'bicycle' | 'car' | 'foot' | null (drivers only)
+  merchantStatus: text("merchant_status"), // 'pending' | 'approved' | 'rejected' | null (store owners only)
+  vehicleType: text("vehicle_type"),   // company-assigned vehicle label (company owns the fleet)
   expoPushToken: text("expo_push_token"), // Expo push token for future server-side push delivery
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

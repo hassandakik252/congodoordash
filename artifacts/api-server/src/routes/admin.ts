@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, restaurantsTable, ordersTable, reviewsTable } from "@workspace/db/schema";
+import { usersTable, restaurantsTable, ordersTable, reviewsTable, kycDocumentsTable } from "@workspace/db/schema";
 import { avg, count, eq, ilike, or, desc, sql, and } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
@@ -478,5 +478,129 @@ router.patch("/users/:id/toggle", async (req, res) => {
     res.status(500).json({ error: "Failed to toggle user" });
   }
 });
+
+// ── KYC document review ──────────────────────────────────────────────────────
+
+// GET /admin/kyc?status=pending — documents to review, with submitter info.
+router.get("/kyc", async (req, res) => {
+  try {
+    const { status } = req.query as { status?: string };
+    const conds = [];
+    if (status && ["pending", "approved", "rejected"].includes(status)) {
+      conds.push(eq(kycDocumentsTable.status, status as "pending" | "approved" | "rejected"));
+    }
+    const rows = await db
+      .select({
+        id: kycDocumentsTable.id,
+        userId: kycDocumentsTable.userId,
+        type: kycDocumentsTable.type,
+        imageUrl: kycDocumentsTable.imageUrl,
+        status: kycDocumentsTable.status,
+        note: kycDocumentsTable.note,
+        createdAt: kycDocumentsTable.createdAt,
+        userName: usersTable.name,
+        userRole: usersTable.role,
+        userEmail: usersTable.email,
+      })
+      .from(kycDocumentsTable)
+      .leftJoin(usersTable, eq(kycDocumentsTable.userId, usersTable.id))
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(kycDocumentsTable.createdAt))
+      .limit(200);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch KYC documents" });
+  }
+});
+
+// PATCH /admin/kyc/:id — approve/reject a document.
+router.patch("/kyc/:id", async (req: AuthRequest, res) => {
+  try {
+    const id = parseInt(String(req.params.id));
+    if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
+    const schema = z.object({ action: z.enum(["approved", "rejected"]), note: z.string().optional() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "validation_error", message: parsed.error.message }); return; }
+
+    const [doc] = await db.select().from(kycDocumentsTable).where(eq(kycDocumentsTable.id, id)).limit(1);
+    if (!doc) { res.status(404).json({ error: "not_found" }); return; }
+
+    const [updated] = await db.update(kycDocumentsTable)
+      .set({ status: parsed.data.action, note: parsed.data.note ?? null, reviewedBy: req.user!.id, reviewedAt: new Date() })
+      .where(eq(kycDocumentsTable.id, id))
+      .returning();
+
+    createNotification({
+      userId: doc.userId,
+      type: parsed.data.action === "approved" ? "payment_confirmed" : "payment_failed",
+      title: parsed.data.action === "approved" ? "Document vérifié ✅" : "Document refusé ❌",
+      body: parsed.data.action === "approved"
+        ? `Votre document (${doc.type}) a été vérifié.`
+        : `Votre document (${doc.type}) a été refusé.${parsed.data.note ? " " + parsed.data.note : ""}`,
+    }).catch((err) => console.error("[kyc] notify failed", err));
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to review document" });
+  }
+});
+
+// ── Merchant (store owner) approvals ─────────────────────────────────────────
+
+// GET /admin/merchants?status= — store owners with their approval status.
+router.get("/merchants", async (req, res) => {
+  try {
+    const { status } = req.query as { status?: string };
+    const conds = [eq(usersTable.role, "restaurant_owner")];
+    if (status && ["pending", "approved", "rejected"].includes(status)) {
+      conds.push(eq(usersTable.merchantStatus, status));
+    }
+    const rows = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, merchantStatus: usersTable.merchantStatus, isActive: usersTable.isActive, createdAt: usersTable.createdAt })
+      .from(usersTable)
+      .where(and(...conds))
+      .orderBy(desc(usersTable.createdAt))
+      .limit(200);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch merchants" });
+  }
+});
+
+function makeMerchantDecision(action: "approved" | "rejected") {
+  return async (req: AuthRequest, res: import("express").Response) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
+      const [m] = await db.select({ id: usersTable.id, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+      if (!m) { res.status(404).json({ error: "not_found" }); return; }
+      if (m.role !== "restaurant_owner") { res.status(400).json({ error: "not_a_merchant" }); return; }
+
+      const [updated] = await db.update(usersTable)
+        .set({ merchantStatus: action, isActive: true })
+        .where(eq(usersTable.id, id))
+        .returning({ id: usersTable.id, merchantStatus: usersTable.merchantStatus });
+
+      createNotification({
+        userId: id,
+        type: action === "approved" ? "payment_confirmed" : "payment_failed",
+        title: action === "approved" ? "Boutique approuvée ✅" : "Boutique refusée ❌",
+        body: action === "approved"
+          ? "Votre boutique est approuvée. Vous pouvez commencer à recevoir des commandes."
+          : "Votre demande de boutique a été refusée. Contactez le support.",
+      }).catch((err) => console.error("[merchant] notify failed", err));
+
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to update merchant" });
+    }
+  };
+}
+router.patch("/merchants/:id/approve", makeMerchantDecision("approved"));
+router.patch("/merchants/:id/reject", makeMerchantDecision("rejected"));
 
 export default router;

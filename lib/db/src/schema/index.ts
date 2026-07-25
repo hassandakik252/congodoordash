@@ -1,4 +1,5 @@
 export * from "./users";
+export * from "./kyc_documents";
 export * from "./stores";
 export * from "./categories";
 export * from "./products";
