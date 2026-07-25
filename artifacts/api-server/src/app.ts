@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { UPLOAD_DIR } from "./lib/storage";
 
 const app: Express = express();
 
@@ -40,6 +41,9 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve locally-stored uploads (no-op when a cloud STORAGE_DRIVER is used).
+app.use("/uploads", express.static(UPLOAD_DIR));
 
 app.use("/api", router);
 

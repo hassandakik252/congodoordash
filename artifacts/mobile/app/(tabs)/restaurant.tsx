@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { pickAndUploadImage } from "@/utils/imageUpload";
 import { useLang } from "@/context/LanguageContext";
 import { restaurantApi } from "@/services/api";
 import { formatCurrency } from "@/utils/format";
@@ -137,6 +138,7 @@ export default function RestaurantProfileScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
 
   // ── Load restaurant ────────────────────────────────────────────────────────
 
@@ -302,6 +304,26 @@ export default function RestaurantProfileScreen() {
             <Text style={styles.coverPlaceholderText}>No cover image</Text>
           </View>
         )}
+
+        <Pressable
+          style={styles.uploadCoverBtn}
+          disabled={uploadingImg}
+          onPress={async () => {
+            try {
+              setUploadingImg(true); setSaveErr(null);
+              const url = await pickAndUploadImage();
+              if (url) setField("imageUrl", url);
+            } catch (e: any) {
+              setSaveErr(e?.message || "Upload failed");
+            } finally {
+              setUploadingImg(false);
+            }
+          }}
+        >
+          {uploadingImg
+            ? <ActivityIndicator color={Colors.primary} size="small" />
+            : <><Ionicons name="cloud-upload-outline" size={18} color={Colors.primary} /><Text style={styles.uploadCoverText}>{form.imageUrl ? "Changer la photo" : "Ajouter une photo"}</Text></>}
+        </Pressable>
 
         {/* ── Open/Closed toggle ────────────────────────────────────────── */}
         <View style={styles.card}>
@@ -518,6 +540,12 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4,
   },
   coverPlaceholderText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  uploadCoverBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    height: 46, borderRadius: 12, marginBottom: 12,
+    backgroundColor: Colors.primary + "1A", borderWidth: 1, borderColor: Colors.primary + "55",
+  },
+  uploadCoverText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.primary },
 
   // Card sections
   card: {

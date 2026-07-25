@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { pickAndUploadImage } from "@/utils/imageUpload";
 import { useLang } from "@/context/LanguageContext";
 import { restaurantApi } from "@/services/api";
 import { formatCurrency } from "@/utils/format";
@@ -65,9 +66,22 @@ function ItemFormModal({
 }) {
   const { t } = useLang();
   const insets = useSafeAreaInsets();
+  const [uploading, setUploading] = useState(false);
 
   const setField = (key: keyof FormState, val: any) =>
     setForm(f => ({ ...f, [key]: val }));
+
+  const handlePickImage = async () => {
+    try {
+      setUploading(true);
+      const url = await pickAndUploadImage();
+      if (url) setField("imageUrl", url);
+    } catch (e: any) {
+      Alert.alert(t("error"), e?.message || t("error"));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <Modal
@@ -190,9 +204,17 @@ function ItemFormModal({
                 </ScrollView>
               </View>
 
-              {/* Image URL */}
+              {/* Image */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>{t("itemImageUrl")}</Text>
+                {!!form.imageUrl && (
+                  <Image source={{ uri: form.imageUrl }} style={styles.uploadPreview} resizeMode="cover" />
+                )}
+                <Pressable style={styles.uploadBtn} onPress={handlePickImage} disabled={uploading}>
+                  {uploading
+                    ? <ActivityIndicator color={Colors.primary} size="small" />
+                    : <><Ionicons name="cloud-upload-outline" size={18} color={Colors.primary} /><Text style={styles.uploadBtnText}>{form.imageUrl ? "Changer la photo" : "Ajouter une photo"}</Text></>}
+                </Pressable>
                 <View style={styles.inputRow}>
                   <Ionicons name="image-outline" size={16} color={Colors.textMuted} />
                   <TextInput
@@ -801,6 +823,13 @@ const styles = StyleSheet.create({
   // Form
   formGroup: { marginBottom: 16 },
   label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
+  uploadPreview: { width: "100%", height: 160, borderRadius: 12, marginBottom: 10, backgroundColor: Colors.surfaceAlt },
+  uploadBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    height: 46, borderRadius: 12, marginBottom: 10,
+    backgroundColor: Colors.primary + "1A", borderWidth: 1, borderColor: Colors.primary + "55",
+  },
+  uploadBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.primary },
   inputRow: {
     flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: Colors.surfaceAlt, borderRadius: 12, paddingHorizontal: 14,

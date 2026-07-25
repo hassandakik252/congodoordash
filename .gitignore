@@ -32,3 +32,6 @@ pnpm-debug.log*
 .idea/
 .vscode/
 *.swp
+
+# Local file uploads (storage driver 'local')
+uploads/

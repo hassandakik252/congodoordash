@@ -10,6 +10,7 @@ import earningsRouter from "./earnings";
 import reviewsRouter from "./reviews";
 import promoRouter from "./promo";
 import paymentsRouter from "./payments";
+import uploadsRouter from "./uploads";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,7 @@ router.use("/admin", adminRouter);
 router.use("/earnings", earningsRouter);
 router.use("/reviews", reviewsRouter);
 router.use("/payments", paymentsRouter);
+router.use("/uploads", uploadsRouter);
 router.use(promoRouter);
 
 export default router;
