@@ -59,9 +59,11 @@ const config: ExpoConfig = {
     [
       "expo-router",
       {
-        origin: IS_PRODUCTION
-          ? "https://deliver-lbh.replit.app/"
-          : "https://replit.com/",
+        // Web origin for the router. Set EXPO_PUBLIC_DOMAIN to your deployed
+        // domain (e.g. deliver-lbh.app); falls back to localhost in dev.
+        origin: process.env.EXPO_PUBLIC_DOMAIN
+          ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+          : "http://localhost:8081",
       },
     ],
     "expo-font",
@@ -75,8 +77,10 @@ const config: ExpoConfig = {
 
   extra: {
     appEnvironment: IS_PRODUCTION ? "production" : "development",
+    // `eas init` writes the real projectId here; until then it can be provided
+    // via the EAS_PROJECT_ID env var. Left undefined otherwise (no placeholder).
     eas: {
-      projectId: "YOUR_EAS_PROJECT_ID",
+      projectId: process.env.EAS_PROJECT_ID,
     },
   },
 };

@@ -95,6 +95,29 @@ The platform has been generalized from a restaurant-only app to multi-vertical:
 
 Run `pnpm run typecheck` and `pnpm test` to verify.
 
+## Building the mobile app (EAS)
+
+The app builds with [EAS Build](https://docs.expo.dev/build/introduction/).
+Config is env-driven — no hardcoded project id or domain.
+
+```bash
+cd artifacts/mobile
+npm i -g eas-cli && eas login
+eas init                       # creates your Expo project + writes the projectId
+```
+
+Set your API domain in `eas.json` (replace `your-api-domain.example` in the
+`preview`/`production` profiles), then:
+
+```bash
+eas build --profile preview --platform android      # internal test build
+eas build --profile production --platform all        # store builds
+eas submit --profile production                      # upload to App Store / Play
+```
+
+`app.config.ts` reads `EXPO_PUBLIC_DOMAIN` (web/router origin) and
+`EAS_PROJECT_ID` from the environment; `eas init` fills the project id in.
+
 ## Typecheck / build
 
 ```bash
