@@ -186,6 +186,8 @@ export interface CreateOrderPayload {
   notes?: string;
   driverInstructions?: string;
   promoCode?: string;
+  tip?: number;
+  scheduledFor?: string; // ISO datetime; omit for ASAP
 }
 
 // PROMO CODES
@@ -323,4 +325,6 @@ export const reviewApi = {
     request<any>("/reviews", { method: "POST", body: JSON.stringify(body) }),
   check: (orderId: number) =>
     request<{ reviewed: boolean; review: any | null }>(`/reviews/check/${orderId}`),
+  driverAvg: (driverId: number) =>
+    request<{ avg: number | null; count: number }>(`/reviews/driver/${driverId}/avg`),
 };

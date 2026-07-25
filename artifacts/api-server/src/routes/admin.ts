@@ -16,6 +16,7 @@ router.get("/stats", async (_req, res) => {
     const [deliveredOrders] = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(eq(ordersTable.status, "delivered"));
     const [activeOrders] = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(sql`${ordersTable.status} NOT IN ('delivered', 'cancelled')`);
     const [revenue] = await db.select({ total: sql<number>`COALESCE(SUM(${ordersTable.total}), 0)` }).from(ordersTable).where(eq(ordersTable.status, "delivered"));
+    const [commission] = await db.select({ total: sql<number>`COALESCE(SUM(${ordersTable.commission}), 0)` }).from(ordersTable).where(eq(ordersTable.status, "delivered"));
     const [totalRestaurants] = await db.select({ count: sql<number>`count(*)` }).from(restaurantsTable);
     const [totalCustomers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "customer"));
     const [totalDrivers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "driver"));
@@ -27,6 +28,7 @@ router.get("/stats", async (_req, res) => {
       deliveredOrders: Number(deliveredOrders.count),
       activeOrders: Number(activeOrders.count),
       revenue: Number(revenue.total),
+      commission: Number(commission.total),
       totalRestaurants: Number(totalRestaurants.count),
       totalCustomers: Number(totalCustomers.count),
       totalDrivers: Number(totalDrivers.count),
@@ -609,7 +611,10 @@ router.get("/settings", async (_req, res) => {
   try {
     const rows = await db.select().from(settingsTable);
     const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    res.json({ usdRate: map["usd_rate"] ? Number(map["usd_rate"]) : null });
+    res.json({
+      usdRate: map["usd_rate"] ? Number(map["usd_rate"]) : null,
+      commissionPct: map["commission_pct"] ? Number(map["commission_pct"]) : null,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to read settings" });
@@ -618,13 +623,18 @@ router.get("/settings", async (_req, res) => {
 
 router.patch("/settings", async (req, res) => {
   try {
-    const parsed = z.object({ usdRate: z.number().positive() }).safeParse(req.body);
+    const parsed = z.object({
+      usdRate: z.number().positive().optional(),
+      commissionPct: z.number().min(0).max(100).optional(),
+    }).safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "validation_error", message: parsed.error.message }); return; }
-    await db
-      .insert(settingsTable)
-      .values({ key: "usd_rate", value: String(parsed.data.usdRate) })
-      .onConflictDoUpdate({ target: settingsTable.key, set: { value: String(parsed.data.usdRate), updatedAt: new Date() } });
-    res.json({ usdRate: parsed.data.usdRate });
+    const upsert = async (key: string, value: number) => {
+      await db.insert(settingsTable).values({ key, value: String(value) })
+        .onConflictDoUpdate({ target: settingsTable.key, set: { value: String(value), updatedAt: new Date() } });
+    };
+    if (parsed.data.usdRate !== undefined) await upsert("usd_rate", parsed.data.usdRate);
+    if (parsed.data.commissionPct !== undefined) await upsert("commission_pct", parsed.data.commissionPct);
+    res.json({ usdRate: parsed.data.usdRate, commissionPct: parsed.data.commissionPct });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to update settings" });

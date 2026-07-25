@@ -170,7 +170,7 @@ export default function RegisterScreen() {
             />
             <Text style={styles.termsText}>
               {language === "fr" ? "J'accepte les " : "I accept the "}
-              <Text style={styles.termsLink} onPress={() => router.push("/legal/privacy")}>
+              <Text style={styles.termsLink} onPress={() => router.push("/legal/terms" as any)}>
                 {language === "fr" ? "Conditions et la Politique de confidentialité" : "Terms & Privacy Policy"}
               </Text>
             </Text>

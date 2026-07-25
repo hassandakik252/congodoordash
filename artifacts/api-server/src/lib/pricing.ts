@@ -26,9 +26,9 @@ export function lineTotal(item: PricedLine): number {
   }
 }
 
-/** Recompute subtotal/total from (possibly picked) items. */
-export function recomputeTotals(items: PricedLine[], deliveryFee: number, discountAmount: number) {
+/** Recompute subtotal/total from (possibly picked) items. Tip is added on top. */
+export function recomputeTotals(items: PricedLine[], deliveryFee: number, discountAmount: number, tip = 0) {
   const subtotal = items.reduce((s, i) => s + lineTotal(i), 0);
-  const total = Math.max(0, subtotal + deliveryFee - discountAmount);
+  const total = Math.max(0, subtotal + deliveryFee - discountAmount + tip);
   return { subtotal, total };
 }

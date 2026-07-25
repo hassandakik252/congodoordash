@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "commission" real DEFAULT 0 NOT NULL;

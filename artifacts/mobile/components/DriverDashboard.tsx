@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useLang } from "@/context/LanguageContext";
-import { orderApi, earningsApi } from "@/services/api";
+import { orderApi, earningsApi, reviewApi } from "@/services/api";
 import { formatCurrency, formatDate, getOrderStatusColor } from "@/utils/format";
 import LivePulse from "./LivePulse";
 import DriverEarnings from "./DriverEarnings";
@@ -77,6 +77,13 @@ export default function DriverDashboard() {
 
   const todayEarnings = todayEarningsQuery.data?.totalEarnings ?? 0;
   const todayDeliveries = todayEarningsQuery.data?.totalDeliveries ?? 0;
+
+  const ratingQuery = useQuery({
+    queryKey: ["driver-rating", authUser?.id],
+    queryFn: () => reviewApi.driverAvg(authUser!.id),
+    enabled: !!authUser?.id,
+  });
+  const myRating = ratingQuery.data?.avg;
 
   const availableCount = availableQuery.data?.length ?? 0;
   const flash = useNewOrderFlash(availableCount, () => {
@@ -176,7 +183,15 @@ export default function DriverDashboard() {
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>{t("driver")}</Text>
-          <Text style={styles.subtitle}>{authUser?.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={styles.subtitle}>{authUser?.name}</Text>
+            {myRating != null && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <Ionicons name="star" size={13} color={Colors.accent} />
+                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.accent }}>{myRating.toFixed(1)}</Text>
+              </View>
+            )}
+          </View>
         </View>
         <LivePulse label="Live" color={Colors.success} />
       </View>

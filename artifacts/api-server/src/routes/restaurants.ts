@@ -4,8 +4,14 @@ import { restaurantsTable, menuItemsTable, usersTable } from "@workspace/db/sche
 import { eq, ilike, or, and, sql, getTableColumns } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
+import { isOpenByHours } from "../lib/hours";
 
 const router = Router();
+
+/** Attach `openNow` = manual isOpen AND within the store's schedule. */
+function withOpenNow<T extends { isOpen: boolean; businessHours?: any }>(store: T) {
+  return { ...store, openNow: store.isOpen && isOpenByHours(store.businessHours) };
+}
 
 const verticalValues = ["restaurant", "grocery", "pharmacy", "retail", "drinks"] as const;
 const productUnitValues = ["each", "kg", "g", "L", "pack"] as const;
@@ -96,7 +102,7 @@ router.get("/", async (req, res) => {
     .leftJoin(usersTable, eq(restaurantsTable.ownerId, usersTable.id))
     .where(and(...conditions));
 
-  res.json(restaurants);
+  res.json(restaurants.map(withOpenNow));
 });
 
 // ── OWNER-ONLY "MINE" ROUTES (must appear before /:id routes) ────────────────
@@ -114,6 +120,7 @@ router.patch("/mine", requireAuth, requireRole("restaurant_owner"), async (req: 
     deliveryFee: z.number().nonnegative().optional(),
     isOpen: z.boolean().optional(),
     openingHours: z.string().optional(),
+    businessHours: z.array(z.object({ open: z.string(), close: z.string() }).nullable()).length(7).nullable().optional(),
   });
 
   const parsed = schema.safeParse(req.body);
@@ -145,6 +152,7 @@ router.patch("/mine", requireAuth, requireRole("restaurant_owner"), async (req: 
   if (d.deliveryFee !== undefined) updates.deliveryFee = d.deliveryFee;
   if (d.isOpen !== undefined) updates.isOpen = d.isOpen;
   if (d.openingHours !== undefined) updates.openingHours = d.openingHours;
+  if (d.businessHours !== undefined) updates.businessHours = d.businessHours;
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "bad_request", message: "No fields to update" });
@@ -207,7 +215,7 @@ router.get("/:id", async (req, res) => {
     res.status(404).json({ error: "not_found", message: "Restaurant not found" });
     return;
   }
-  res.json(restaurant);
+  res.json(withOpenNow(restaurant));
 });
 
 // POST /restaurants

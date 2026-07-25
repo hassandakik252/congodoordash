@@ -27,7 +27,7 @@ function FieldError({ message }: { message?: string }) {
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
-  const { t } = useLang();
+  const { t, language } = useLang();
   const { items, restaurantId, restaurantName, deliveryFee, subtotal, total, updateQuantity, clearCart } = useCart();
   const { user, updateUser } = useAuth();
   const qc = useQueryClient();
@@ -55,7 +55,9 @@ export default function CartScreen() {
   const [promoLoading, setPromoLoading] = useState(false);
 
   const discountAmount = promoResult?.discountAmount ?? 0;
-  const finalTotal = Math.max(0, total - discountAmount);
+  const [tip, setTip] = useState(0);
+  const [scheduleHours, setScheduleHours] = useState(0); // 0 = ASAP
+  const finalTotal = Math.max(0, total - discountAmount + tip);
 
   const handleApplyPromo = async () => {
     const code = promoInput.trim().toUpperCase();
@@ -154,6 +156,8 @@ export default function CartScreen() {
         notes: note.trim() || undefined,
         driverInstructions: driverInstructions.trim() || undefined,
         promoCode: promoResult?.code || undefined,
+        tip: tip > 0 ? tip : undefined,
+        scheduledFor: scheduleHours > 0 ? new Date(Date.now() + scheduleHours * 3600_000).toISOString() : undefined,
       });
 
       succeeded = true;
@@ -479,6 +483,34 @@ export default function CartScreen() {
             )}
           </View>
 
+          {/* ── SCHEDULE ── */}
+          <View style={styles.section}>
+            <Text style={styles.tipTitle}>{language === "fr" ? "Quand ?" : "When?"}</Text>
+            <View style={styles.tipRow}>
+              {[0, 1, 2, 3].map(h => (
+                <Pressable key={h} style={[styles.tipChip, scheduleHours === h && styles.tipChipActive]} onPress={() => setScheduleHours(h)}>
+                  <Text style={[styles.tipChipText, scheduleHours === h && styles.tipChipTextActive]}>
+                    {h === 0 ? (language === "fr" ? "Maintenant" : "Now") : `+${h}h`}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {/* ── TIP ── */}
+          <View style={styles.section}>
+            <Text style={styles.tipTitle}>{language === "fr" ? "Pourboire au livreur" : "Tip your driver"}</Text>
+            <View style={styles.tipRow}>
+              {[0, 500, 1000, 2000].map(amt => (
+                <Pressable key={amt} style={[styles.tipChip, tip === amt && styles.tipChipActive]} onPress={() => setTip(amt)}>
+                  <Text style={[styles.tipChipText, tip === amt && styles.tipChipTextActive]}>
+                    {amt === 0 ? (language === "fr" ? "Aucun" : "None") : formatCurrency(amt)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
           {/* ── PRICE SUMMARY ── */}
           <View style={[styles.section, styles.summary]}>
             <View style={styles.summaryRow}>
@@ -497,6 +529,12 @@ export default function CartScreen() {
                 <Text style={[styles.summaryValue, { color: Colors.success }]}>
                   −{formatCurrency(discountAmount)}
                 </Text>
+              </View>
+            )}
+            {tip > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>{language === "fr" ? "Pourboire" : "Tip"}</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(tip)}</Text>
               </View>
             )}
             <View style={[styles.summaryRow, styles.totalRow]}>
@@ -682,6 +720,12 @@ const styles = StyleSheet.create({
   summary: {},
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
   summaryLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  tipTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginBottom: 12 },
+  tipRow: { flexDirection: "row", gap: 8 },
+  tipChip: { flex: 1, alignItems: "center", paddingVertical: 11, borderRadius: 12, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border },
+  tipChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tipChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  tipChipTextActive: { color: "#fff" },
   summaryValue: { fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.textPrimary },
   totalRow: { paddingTop: 12, marginTop: 4, borderTopWidth: 1, borderTopColor: Colors.border, marginBottom: 0 },
   totalLabel: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
