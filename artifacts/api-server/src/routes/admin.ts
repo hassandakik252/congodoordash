@@ -125,7 +125,7 @@ router.get("/restaurants", async (req, res) => {
 
 router.patch("/restaurants/:id/toggle", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, id)).limit(1);
     if (!restaurant) { res.status(404).json({ error: "Restaurant not found" }); return; }
     const [updated] = await db
@@ -239,7 +239,7 @@ router.get("/drivers", async (req, res) => {
 
 router.patch("/drivers/:id/approve", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
 
     const [driver] = await db.select({ id: usersTable.id, role: usersTable.role })
@@ -260,7 +260,7 @@ router.patch("/drivers/:id/approve", async (req, res) => {
 
 router.patch("/drivers/:id/reject", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
 
     const [driver] = await db.select({ id: usersTable.id, role: usersTable.role })
@@ -331,7 +331,7 @@ router.get("/payments", async (req, res) => {
  */
 router.patch("/payments/:id", async (req: AuthRequest, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
 
     const parsed = z.object({ action: z.enum(["confirmed", "failed"]) }).safeParse(req.body);
@@ -463,7 +463,7 @@ router.get("/analytics", async (req, res) => {
 
 router.patch("/users/:id/toggle", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
     if (user.role === "admin") { res.status(403).json({ error: "Cannot deactivate admin" }); return; }

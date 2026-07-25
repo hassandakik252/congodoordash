@@ -191,7 +191,7 @@ router.get("/mine/menu", requireAuth, requireRole("restaurant_owner"), async (re
 
 // GET /restaurants/:id
 router.get("/:id", async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
 
   const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, id)).limit(1);
@@ -220,7 +220,7 @@ router.post("/", requireAuth, requireRole("restaurant_owner"), async (req: AuthR
 
 // GET /restaurants/:id/menu — available items only (public, for customers)
 router.get("/:id/menu", async (req, res) => {
-  const restaurantId = parseInt(req.params.id);
+  const restaurantId = parseInt(String(req.params.id));
   if (isNaN(restaurantId)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
 
   const items = await db.select()
@@ -236,7 +236,7 @@ router.get("/:id/menu", async (req, res) => {
 
 // POST /restaurants/:id/menu — add menu item
 router.post("/:id/menu", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(req.params.id);
+  const restaurantId = parseInt(String(req.params.id));
   if (isNaN(restaurantId)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
 
   const parsed = createMenuItemSchema.safeParse(req.body);
@@ -259,8 +259,8 @@ router.post("/:id/menu", requireAuth, requireRole("restaurant_owner"), async (re
 
 // PATCH /restaurants/:id/menu/:itemId/availability — toggle availability
 router.patch("/:id/menu/:itemId/availability", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(req.params.id);
-  const itemId = parseInt(req.params.itemId);
+  const restaurantId = parseInt(String(req.params.id));
+  const itemId = parseInt(String(req.params.itemId));
   if (isNaN(restaurantId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
 
   const ownership = await requireOwnership(restaurantId, req.user!.id);
@@ -284,8 +284,8 @@ router.patch("/:id/menu/:itemId/availability", requireAuth, requireRole("restaur
 
 // PATCH /restaurants/:id/menu/:itemId — update menu item fields
 router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(req.params.id);
-  const itemId = parseInt(req.params.itemId);
+  const restaurantId = parseInt(String(req.params.id));
+  const itemId = parseInt(String(req.params.itemId));
   if (isNaN(restaurantId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
 
   const parsed = updateMenuItemSchema.safeParse(req.body);
@@ -328,8 +328,8 @@ router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), 
 
 // DELETE /restaurants/:id/menu/:itemId — permanently delete menu item
 router.delete("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(req.params.id);
-  const itemId = parseInt(req.params.itemId);
+  const restaurantId = parseInt(String(req.params.id));
+  const itemId = parseInt(String(req.params.itemId));
   if (isNaN(restaurantId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
 
   const ownership = await requireOwnership(restaurantId, req.user!.id);

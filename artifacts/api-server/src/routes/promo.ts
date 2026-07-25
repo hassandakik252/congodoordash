@@ -74,7 +74,7 @@ router.post("/admin/promo-codes", requireAuth, requireRole("admin"), async (req,
 
 // PATCH /admin/promo-codes/:id/toggle — activate / deactivate
 router.patch("/admin/promo-codes/:id/toggle", requireAuth, requireRole("admin"), async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
 
   try {
@@ -95,7 +95,7 @@ router.patch("/admin/promo-codes/:id/toggle", requireAuth, requireRole("admin"),
 
 // DELETE /admin/promo-codes/:id
 router.delete("/admin/promo-codes/:id", requireAuth, requireRole("admin"), async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
 
   try {

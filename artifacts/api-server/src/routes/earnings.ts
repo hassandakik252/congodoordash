@@ -186,7 +186,7 @@ router.get("/admin/drivers", requireAuth, requireRole("admin"), async (req: Auth
 
 // GET /earnings/admin/drivers/:driverId — one driver's full breakdown
 router.get("/admin/drivers/:driverId", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
-  const driverId = parseInt(req.params.driverId);
+  const driverId = parseInt(String(req.params.driverId));
   if (isNaN(driverId)) {
     res.status(400).json({ error: "bad_request", message: "Invalid driver ID" });
     return;
@@ -247,7 +247,7 @@ const settleSchema = z.object({
 });
 
 router.post("/admin/drivers/:driverId/settle", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
-  const driverId = parseInt(req.params.driverId);
+  const driverId = parseInt(String(req.params.driverId));
   if (isNaN(driverId)) {
     res.status(400).json({ error: "bad_request", message: "Invalid driver ID" });
     return;

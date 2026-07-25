@@ -86,7 +86,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
 
 // GET /reviews/check/:orderId — has the customer already reviewed this order?
 router.get("/check/:orderId", requireAuth, async (req: AuthRequest, res) => {
-  const orderId = parseInt(req.params.orderId);
+  const orderId = parseInt(String(req.params.orderId));
   if (isNaN(orderId)) {
     res.status(400).json({ error: "bad_request" });
     return;
@@ -103,7 +103,7 @@ router.get("/check/:orderId", requireAuth, async (req: AuthRequest, res) => {
 
 // GET /reviews/driver/:driverId/avg — average driver rating (admin/internal)
 router.get("/driver/:driverId/avg", requireAuth, async (req: AuthRequest, res) => {
-  const driverId = parseInt(req.params.driverId);
+  const driverId = parseInt(String(req.params.driverId));
   if (isNaN(driverId)) {
     res.status(400).json({ error: "bad_request" });
     return;

@@ -36,7 +36,7 @@ router.get("/unread-count", requireAuth, async (req: AuthRequest, res) => {
 
 // PATCH /notifications/:id/read — mark one as read
 router.patch("/:id/read", requireAuth, async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) {
     res.status(400).json({ error: "bad_request", message: "Invalid ID" });
     return;

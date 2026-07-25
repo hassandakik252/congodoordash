@@ -232,7 +232,7 @@ router.get("/my-orders", requireAuth, requireRole("driver"), async (req: AuthReq
 
 // GET /orders/:id — single order (ownership-gated)
 router.get("/:id", requireAuth, async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) {
     res.status(400).json({ error: "bad_request", message: "Invalid order ID" });
     return;
@@ -278,7 +278,7 @@ router.get("/:id", requireAuth, async (req: AuthRequest, res) => {
 
 // POST /orders/:id/accept — driver atomically claims an order
 router.post("/:id/accept", requireAuth, requireRole("driver"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) {
     res.status(400).json({ error: "bad_request", message: "Invalid order ID" });
     return;
@@ -327,7 +327,7 @@ router.post("/:id/accept", requireAuth, requireRole("driver"), async (req: AuthR
 
 // PATCH /orders/:id/confirm-cash — driver confirms cash received before marking delivered
 router.patch("/:id/confirm-cash", requireAuth, requireRole("driver"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) {
     res.status(400).json({ error: "bad_request", message: "Invalid order ID" });
     return;
@@ -365,7 +365,7 @@ router.patch("/:id/confirm-cash", requireAuth, requireRole("driver"), async (req
 
 // PATCH /orders/:id/status — update status
 router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) {
     res.status(400).json({ error: "bad_request", message: "Invalid order ID" });
     return;
@@ -501,7 +501,7 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
  * (allows updating a previously submitted reference before admin reviews it).
  */
 router.patch("/:id/payment", requireAuth, requireRole("customer"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) {
     res.status(400).json({ error: "bad_request", message: "Invalid order ID" });
     return;
