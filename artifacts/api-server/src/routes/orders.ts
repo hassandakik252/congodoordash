@@ -555,6 +555,31 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
     }
   }
 
+  // Store owners may only touch orders at a store they own, and only the
+  // preparation stages (pickup/delivery are the driver's actions).
+  if (user.role === "restaurant_owner") {
+    const [store] = await db
+      .select({ ownerId: restaurantsTable.ownerId })
+      .from(restaurantsTable)
+      .where(eq(restaurantsTable.id, order.restaurantId))
+      .limit(1);
+    if (!store || store.ownerId !== user.id) {
+      res.status(403).json({ error: "forbidden", message: "Not your store's order" });
+      return;
+    }
+    if (!["confirmed", "preparing", "ready_for_pickup", "cancelled"].includes(status)) {
+      res.status(403).json({ error: "forbidden", message: "Store owners can only manage preparation status" });
+      return;
+    }
+  }
+
+  // Anyone who isn't the customer, assigned driver, owning merchant, or an admin
+  // has no business changing an order's status.
+  if (!["customer", "driver", "restaurant_owner", "admin"].includes(user.role)) {
+    res.status(403).json({ error: "forbidden", message: "Not permitted" });
+    return;
+  }
+
   // State machine: enforce valid status transitions
   if (!isValidTransition(order.status, status)) {
     res.status(409).json({
@@ -576,15 +601,49 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
   // When delivered with cash, mark payment as paid (cash flow unchanged)
   const paymentStatus = status === "delivered" && order.paymentMethod === "cash" ? "paid" : undefined;
 
-  const [updated] = await db
-    .update(ordersTable)
-    .set({
-      status,
-      ...(paymentStatus ? { paymentStatus } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(ordersTable.id, id))
-    .returning();
+  let updated;
+  if (status === "cancelled") {
+    // Cancel + restore inventory + reverse promo usage, atomically and exactly
+    // once (guarded against a concurrent double-cancel).
+    updated = await db.transaction(async (tx) => {
+      const [u] = await tx
+        .update(ordersTable)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(and(eq(ordersTable.id, id), sql`${ordersTable.status} <> 'cancelled'`))
+        .returning();
+      if (!u) return null; // already cancelled by another request — do not restore twice
+
+      for (const it of order.items) {
+        await tx
+          .update(menuItemsTable)
+          .set({ stockQuantity: sql`${menuItemsTable.stockQuantity} + ${it.quantity}` })
+          .where(and(eq(menuItemsTable.id, it.menuItemId), sql`${menuItemsTable.stockQuantity} IS NOT NULL`));
+      }
+      if (order.promoCode) {
+        await tx
+          .update(promoCodesTable)
+          .set({ usedCount: sql`GREATEST(${promoCodesTable.usedCount} - 1, 0)` })
+          .where(eq(promoCodesTable.code, order.promoCode));
+      }
+      return u;
+    });
+
+    if (!updated) {
+      const [current] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+      res.json(current);
+      return;
+    }
+  } else {
+    [updated] = await db
+      .update(ordersTable)
+      .set({
+        status,
+        ...(paymentStatus ? { paymentStatus } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(ordersTable.id, id))
+      .returning();
+  }
 
   // Fire status-based notifications (non-blocking)
   const orderRef = `Commande #${id}`;

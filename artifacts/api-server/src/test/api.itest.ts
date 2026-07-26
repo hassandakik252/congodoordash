@@ -65,13 +65,13 @@ test("health check", async () => {
 
 test("register requires accepting terms", async () => {
   const email = `itest-c-${Date.now()}@x.com`;
-  const bad = await j("POST", "/auth/register", { email, password: "pass123", name: "C", phone: "+243", role: "customer" });
+  const bad = await j("POST", "/auth/register", { email, password: "pass1234", name: "C", phone: "+243", role: "customer" });
   assert.equal(bad.status, 400, "no acceptTerms → 400");
 });
 
 test("full order flow + inventory enforcement", async () => {
   const email = `itest-c2-${Date.now()}@x.com`;
-  const reg = await j("POST", "/auth/register", { email, password: "pass123", name: "C", phone: "+243", role: "customer", acceptTerms: true });
+  const reg = await j("POST", "/auth/register", { email, password: "pass1234", name: "C", phone: "+243", role: "customer", acceptTerms: true });
   assert.equal(reg.status, 201);
   const token = reg.data.token as string;
 
@@ -100,6 +100,40 @@ test("full order flow + inventory enforcement", async () => {
   const search = await j("GET", `/stores/${storeId}/products?search=ITest`);
   const p = search.data.items.find((i: any) => i.id === productId);
   assert.equal(p.stockQuantity, 2, "stock decremented atomically");
+});
+
+test("a merchant cannot change another store's order status", async () => {
+  // Customer places an order at our store.
+  const cEmail = `itest-c3-${Date.now()}@x.com`;
+  const cTok = (await j("POST", "/auth/register", { email: cEmail, password: "pass1234", name: "C", phone: "+243", role: "customer", acceptTerms: true })).data.token;
+  const oid = (await j("POST", "/orders", { restaurantId: storeId, items: [{ menuItemId: productId, quantity: 1 }], deliveryAddress: "Av", paymentMethod: "cash" }, cTok)).data.id;
+
+  // A different merchant (no store here) tries to advance it → 403.
+  const mEmail = `itest-m2-${Date.now()}@x.com`;
+  const mTok = (await j("POST", "/auth/register", { email: mEmail, password: "pass1234", name: "M2", phone: "+243", role: "restaurant_owner", acceptTerms: true })).data.token;
+  const res = await j("PATCH", `/orders/${oid}/status`, { status: "confirmed" }, mTok);
+  assert.equal(res.status, 403, "non-owning merchant blocked");
+});
+
+test("cancelling a tracked order restores stock", async () => {
+  const cEmail = `itest-c4-${Date.now()}@x.com`;
+  const cTok = (await j("POST", "/auth/register", { email: cEmail, password: "pass1234", name: "C", phone: "+243", role: "customer", acceptTerms: true })).data.token;
+
+  // Dedicated product with known stock so prior tests don't interfere.
+  const [prod] = await db.insert(menuItemsTable).values({
+    storeId, name: `ITest Cancel ${Date.now()}`, price: 3000, category: "Céréales", stockQuantity: 10, unit: "pack",
+  }).returning();
+
+  const stockOf = async () =>
+    (await j("GET", `/stores/${storeId}/products?search=ITest Cancel`)).data.items.find((i: any) => i.id === prod.id).stockQuantity;
+
+  const before = await stockOf();
+  const oid = (await j("POST", "/orders", { restaurantId: storeId, items: [{ menuItemId: prod.id, quantity: 2 }], deliveryAddress: "Av", paymentMethod: "cash" }, cTok)).data.id;
+  assert.equal(await stockOf(), before - 2, "stock decremented on order");
+
+  const cancel = await j("PATCH", `/orders/${oid}/status`, { status: "cancelled" }, cTok);
+  assert.equal(cancel.status, 200);
+  assert.equal(await stockOf(), before, "stock restored on cancellation");
 });
 
 test("auth rate limiting kicks in", async () => {

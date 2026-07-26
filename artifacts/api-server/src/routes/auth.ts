@@ -23,7 +23,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(8),
   name: z.string().min(1),
   phone: z.string().min(1),
   role: z.enum(["customer", "restaurant_owner", "driver"]),
