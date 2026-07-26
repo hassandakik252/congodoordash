@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { reviewsTable, ordersTable, restaurantsTable } from "@workspace/db/schema";
+import { reviewsTable, ordersTable, storesTable } from "@workspace/db/schema";
 import { eq, avg, count, and } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
@@ -9,7 +9,7 @@ const router = Router();
 
 const submitSchema = z.object({
   orderId: z.number().int().positive(),
-  restaurantRating: z.number().int().min(1).max(5),
+  storeRating: z.number().int().min(1).max(5),
   driverRating: z.number().int().min(1).max(5).optional(),
   comment: z.string().max(400).optional(),
 });
@@ -22,12 +22,12 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
     return;
   }
 
-  const { orderId, restaurantRating, driverRating, comment } = parsed.data;
+  const { orderId, storeRating, driverRating, comment } = parsed.data;
   const customerId = req.user!.id;
 
   // Verify order belongs to customer and is delivered
   const [order] = await db
-    .select({ customerId: ordersTable.customerId, restaurantId: ordersTable.restaurantId, driverId: ordersTable.driverId, status: ordersTable.status })
+    .select({ customerId: ordersTable.customerId, storeId: ordersTable.storeId, driverId: ordersTable.driverId, status: ordersTable.status })
     .from(ordersTable)
     .where(eq(ordersTable.id, orderId))
     .limit(1);
@@ -61,24 +61,24 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   const [review] = await db.insert(reviewsTable).values({
     orderId,
     customerId,
-    restaurantId: order.restaurantId,
+    storeId: order.storeId,
     driverId: order.driverId ?? null,
-    restaurantRating,
+    storeRating,
     driverRating: driverRating ?? null,
     comment: comment ?? null,
   }).returning();
 
   // Recalculate and update restaurant avg rating
   const [aggResult] = await db
-    .select({ avg: avg(reviewsTable.restaurantRating), total: count(reviewsTable.id) })
+    .select({ avg: avg(reviewsTable.storeRating), total: count(reviewsTable.id) })
     .from(reviewsTable)
-    .where(eq(reviewsTable.restaurantId, order.restaurantId));
+    .where(eq(reviewsTable.storeId, order.storeId));
 
   if (aggResult && aggResult.avg !== null) {
     const newAvg = parseFloat(Number(aggResult.avg).toFixed(2));
-    await db.update(restaurantsTable)
+    await db.update(storesTable)
       .set({ rating: newAvg })
-      .where(eq(restaurantsTable.id, order.restaurantId));
+      .where(eq(storesTable.id, order.storeId));
   }
 
   res.status(201).json(review);
@@ -93,7 +93,7 @@ router.get("/check/:orderId", requireAuth, async (req: AuthRequest, res) => {
   }
 
   const [existing] = await db
-    .select({ id: reviewsTable.id, restaurantRating: reviewsTable.restaurantRating, driverRating: reviewsTable.driverRating, comment: reviewsTable.comment })
+    .select({ id: reviewsTable.id, storeRating: reviewsTable.storeRating, driverRating: reviewsTable.driverRating, comment: reviewsTable.comment })
     .from(reviewsTable)
     .where(and(eq(reviewsTable.orderId, orderId), eq(reviewsTable.customerId, req.user!.id)))
     .limit(1);

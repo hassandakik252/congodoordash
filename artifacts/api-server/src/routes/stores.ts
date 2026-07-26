@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { restaurantsTable, menuItemsTable, usersTable } from "@workspace/db/schema";
+import { storesTable, productsTable, usersTable } from "@workspace/db/schema";
 import { eq, ilike, or, and, sql, getTableColumns } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
@@ -71,10 +71,10 @@ const updateMenuItemSchema = z.object({
 });
 
 // Helper — verify restaurant is owned by requester
-async function requireOwnership(restaurantId: number, userId: number) {
-  const [r] = await db.select({ ownerId: restaurantsTable.ownerId })
-    .from(restaurantsTable)
-    .where(eq(restaurantsTable.id, restaurantId))
+async function requireOwnership(storeId: number, userId: number) {
+  const [r] = await db.select({ ownerId: storesTable.ownerId })
+    .from(storesTable)
+    .where(eq(storesTable.id, storeId))
     .limit(1);
   if (!r) return "not_found";
   if (r.ownerId !== userId) return "forbidden";
@@ -93,22 +93,22 @@ router.get("/", async (req, res) => {
     sql`(${usersTable.merchantStatus} IS NULL OR ${usersTable.merchantStatus} = 'approved')`,
   ];
   if (vertical && (verticalValues as readonly string[]).includes(vertical)) {
-    conditions.push(eq(restaurantsTable.vertical, vertical as (typeof verticalValues)[number]));
+    conditions.push(eq(storesTable.vertical, vertical as (typeof verticalValues)[number]));
   }
-  if (category) conditions.push(eq(restaurantsTable.category, category));
+  if (category) conditions.push(eq(storesTable.category, category));
   if (search) {
     conditions.push(
       or(
-        ilike(restaurantsTable.name, `%${search}%`),
-        ilike(restaurantsTable.description ?? "", `%${search}%`)
+        ilike(storesTable.name, `%${search}%`),
+        ilike(storesTable.description ?? "", `%${search}%`)
       )!,
     );
   }
 
   const restaurants = await db
-    .select(getTableColumns(restaurantsTable))
-    .from(restaurantsTable)
-    .leftJoin(usersTable, eq(restaurantsTable.ownerId, usersTable.id))
+    .select(getTableColumns(storesTable))
+    .from(storesTable)
+    .leftJoin(usersTable, eq(storesTable.ownerId, usersTable.id))
     .where(and(...conditions));
 
   res.json(restaurants.map(withOpenNow));
@@ -117,7 +117,7 @@ router.get("/", async (req, res) => {
 // ── OWNER-ONLY "MINE" ROUTES (must appear before /:id routes) ────────────────
 
 // PATCH /restaurants/mine — update owner's own restaurant
-router.patch("/mine", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
+router.patch("/mine", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
   const schema = z.object({
     name: z.string().min(1).optional(),
     description: z.string().optional(),
@@ -138,10 +138,10 @@ router.patch("/mine", requireAuth, requireRole("restaurant_owner"), async (req: 
     return;
   }
 
-  const [restaurant] = await db.select({ id: restaurantsTable.id })
-    .from(restaurantsTable)
-    .where(eq(restaurantsTable.ownerId, req.user!.id))
-    .orderBy(restaurantsTable.id)
+  const [restaurant] = await db.select({ id: storesTable.id })
+    .from(storesTable)
+    .where(eq(storesTable.ownerId, req.user!.id))
+    .orderBy(storesTable.id)
     .limit(1);
 
   if (!restaurant) {
@@ -168,20 +168,20 @@ router.patch("/mine", requireAuth, requireRole("restaurant_owner"), async (req: 
     return;
   }
 
-  const [updated] = await db.update(restaurantsTable)
+  const [updated] = await db.update(storesTable)
     .set(updates)
-    .where(eq(restaurantsTable.id, restaurant.id))
+    .where(eq(storesTable.id, restaurant.id))
     .returning();
 
   res.json(updated);
 });
 
 // GET /restaurants/mine — owner's own restaurant
-router.get("/mine", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
+router.get("/mine", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
   const [restaurant] = await db.select()
-    .from(restaurantsTable)
-    .where(eq(restaurantsTable.ownerId, req.user!.id))
-    .orderBy(restaurantsTable.id)
+    .from(storesTable)
+    .where(eq(storesTable.ownerId, req.user!.id))
+    .orderBy(storesTable.id)
     .limit(1);
 
   if (!restaurant) {
@@ -192,11 +192,11 @@ router.get("/mine", requireAuth, requireRole("restaurant_owner"), async (req: Au
 });
 
 // GET /restaurants/mine/menu — ALL menu items for owner (incl. unavailable)
-router.get("/mine/menu", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const [restaurant] = await db.select({ id: restaurantsTable.id })
-    .from(restaurantsTable)
-    .where(eq(restaurantsTable.ownerId, req.user!.id))
-    .orderBy(restaurantsTable.id)
+router.get("/mine/menu", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
+  const [restaurant] = await db.select({ id: storesTable.id })
+    .from(storesTable)
+    .where(eq(storesTable.ownerId, req.user!.id))
+    .orderBy(storesTable.id)
     .limit(1);
 
   if (!restaurant) {
@@ -205,9 +205,9 @@ router.get("/mine/menu", requireAuth, requireRole("restaurant_owner"), async (re
   }
 
   const items = await db.select()
-    .from(menuItemsTable)
-    .where(eq(menuItemsTable.storeId, restaurant.id))
-    .orderBy(menuItemsTable.category, menuItemsTable.name);
+    .from(productsTable)
+    .where(eq(productsTable.storeId, restaurant.id))
+    .orderBy(productsTable.category, productsTable.name);
 
   res.json(items);
 });
@@ -219,7 +219,7 @@ router.get("/:id", async (req, res) => {
   const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
 
-  const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, id)).limit(1);
+  const [restaurant] = await db.select().from(storesTable).where(eq(storesTable.id, id)).limit(1);
   if (!restaurant) {
     res.status(404).json({ error: "not_found", message: "Restaurant not found" });
     return;
@@ -228,7 +228,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST /restaurants
-router.post("/", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
+router.post("/", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
   const parsed = createRestaurantSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "validation_error", message: parsed.error.message });
@@ -236,7 +236,7 @@ router.post("/", requireAuth, requireRole("restaurant_owner"), async (req: AuthR
   }
 
   const [restaurant] = await db
-    .insert(restaurantsTable)
+    .insert(storesTable)
     .values({ ...parsed.data, ownerId: req.user!.id })
     .returning();
 
@@ -245,16 +245,16 @@ router.post("/", requireAuth, requireRole("restaurant_owner"), async (req: AuthR
 
 // GET /restaurants/:id/menu — available items only (public, for customers)
 router.get("/:id/menu", async (req, res) => {
-  const restaurantId = parseInt(String(req.params.id));
-  if (isNaN(restaurantId)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
+  const storeId = parseInt(String(req.params.id));
+  if (isNaN(storeId)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
 
   const items = await db.select()
-    .from(menuItemsTable)
+    .from(productsTable)
     .where(and(
-      eq(menuItemsTable.storeId, restaurantId),
-      eq(menuItemsTable.isAvailable, true),
+      eq(productsTable.storeId, storeId),
+      eq(productsTable.isAvailable, true),
     ))
-    .orderBy(menuItemsTable.category, menuItemsTable.name);
+    .orderBy(productsTable.category, productsTable.name);
 
   res.json(items);
 });
@@ -271,36 +271,36 @@ router.get("/:id/products", async (req, res) => {
   const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize ?? "20")) || 20));
 
   const conditions = [
-    eq(menuItemsTable.storeId, storeId),
-    eq(menuItemsTable.isAvailable, true),
+    eq(productsTable.storeId, storeId),
+    eq(productsTable.isAvailable, true),
   ];
   if (search) {
     const term = `%${search}%`;
     conditions.push(
       or(
-        ilike(menuItemsTable.name, term),
-        ilike(menuItemsTable.brand ?? "", term),
-        ilike(menuItemsTable.description ?? "", term),
+        ilike(productsTable.name, term),
+        ilike(productsTable.brand ?? "", term),
+        ilike(productsTable.description ?? "", term),
       )!,
     );
   }
   if (categoryId) {
     const cid = parseInt(categoryId);
-    if (!isNaN(cid)) conditions.push(eq(menuItemsTable.categoryId, cid));
+    if (!isNaN(cid)) conditions.push(eq(productsTable.categoryId, cid));
   }
 
   const where = and(...conditions);
 
   const [{ total }] = await db
     .select({ total: sql<number>`count(*)::int` })
-    .from(menuItemsTable)
+    .from(productsTable)
     .where(where);
 
   const items = await db
     .select()
-    .from(menuItemsTable)
+    .from(productsTable)
     .where(where)
-    .orderBy(menuItemsTable.category, menuItemsTable.name)
+    .orderBy(productsTable.category, productsTable.name)
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
@@ -308,9 +308,9 @@ router.get("/:id/products", async (req, res) => {
 });
 
 // POST /restaurants/:id/menu — add menu item
-router.post("/:id/menu", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(String(req.params.id));
-  if (isNaN(restaurantId)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
+router.post("/:id/menu", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
+  const storeId = parseInt(String(req.params.id));
+  if (isNaN(storeId)) { res.status(400).json({ error: "bad_request", message: "Invalid id" }); return; }
 
   const parsed = createMenuItemSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -318,48 +318,48 @@ router.post("/:id/menu", requireAuth, requireRole("restaurant_owner"), async (re
     return;
   }
 
-  const ownership = await requireOwnership(restaurantId, req.user!.id);
+  const ownership = await requireOwnership(storeId, req.user!.id);
   if (ownership === "not_found") { res.status(404).json({ error: "not_found", message: "Restaurant not found" }); return; }
   if (ownership === "forbidden") { res.status(403).json({ error: "forbidden", message: "Not your restaurant" }); return; }
 
   const [item] = await db
-    .insert(menuItemsTable)
-    .values({ ...parsed.data, storeId: restaurantId })
+    .insert(productsTable)
+    .values({ ...parsed.data, storeId: storeId })
     .returning();
 
   res.status(201).json(item);
 });
 
 // PATCH /restaurants/:id/menu/:itemId/availability — toggle availability
-router.patch("/:id/menu/:itemId/availability", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(String(req.params.id));
+router.patch("/:id/menu/:itemId/availability", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
+  const storeId = parseInt(String(req.params.id));
   const itemId = parseInt(String(req.params.itemId));
-  if (isNaN(restaurantId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
+  if (isNaN(storeId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
 
-  const ownership = await requireOwnership(restaurantId, req.user!.id);
+  const ownership = await requireOwnership(storeId, req.user!.id);
   if (ownership === "not_found") { res.status(404).json({ error: "not_found" }); return; }
   if (ownership === "forbidden") { res.status(403).json({ error: "forbidden", message: "Not your restaurant" }); return; }
 
-  const [existing] = await db.select({ isAvailable: menuItemsTable.isAvailable })
-    .from(menuItemsTable)
-    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.storeId, restaurantId)))
+  const [existing] = await db.select({ isAvailable: productsTable.isAvailable })
+    .from(productsTable)
+    .where(and(eq(productsTable.id, itemId), eq(productsTable.storeId, storeId)))
     .limit(1);
 
   if (!existing) { res.status(404).json({ error: "not_found", message: "Item not found" }); return; }
 
-  const [updated] = await db.update(menuItemsTable)
+  const [updated] = await db.update(productsTable)
     .set({ isAvailable: !existing.isAvailable })
-    .where(eq(menuItemsTable.id, itemId))
+    .where(eq(productsTable.id, itemId))
     .returning();
 
   res.json(updated);
 });
 
 // PATCH /restaurants/:id/menu/:itemId — update menu item fields
-router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(String(req.params.id));
+router.patch("/:id/menu/:itemId", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
+  const storeId = parseInt(String(req.params.id));
   const itemId = parseInt(String(req.params.itemId));
-  if (isNaN(restaurantId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
+  if (isNaN(storeId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
 
   const parsed = updateMenuItemSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -367,13 +367,13 @@ router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), 
     return;
   }
 
-  const ownership = await requireOwnership(restaurantId, req.user!.id);
+  const ownership = await requireOwnership(storeId, req.user!.id);
   if (ownership === "not_found") { res.status(404).json({ error: "not_found" }); return; }
   if (ownership === "forbidden") { res.status(403).json({ error: "forbidden", message: "Not your restaurant" }); return; }
 
-  const [item] = await db.select({ id: menuItemsTable.id })
-    .from(menuItemsTable)
-    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.storeId, restaurantId)))
+  const [item] = await db.select({ id: productsTable.id })
+    .from(productsTable)
+    .where(and(eq(productsTable.id, itemId), eq(productsTable.storeId, storeId)))
     .limit(1);
   if (!item) { res.status(404).json({ error: "not_found", message: "Item not found" }); return; }
 
@@ -393,26 +393,26 @@ router.patch("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), 
   if (parsed.data.requiresPrescription !== undefined) updates.requiresPrescription = parsed.data.requiresPrescription;
   if (parsed.data.modifiers !== undefined) updates.modifiers = parsed.data.modifiers;
 
-  const [updated] = await db.update(menuItemsTable)
+  const [updated] = await db.update(productsTable)
     .set(updates)
-    .where(eq(menuItemsTable.id, itemId))
+    .where(eq(productsTable.id, itemId))
     .returning();
 
   res.json(updated);
 });
 
 // DELETE /restaurants/:id/menu/:itemId — permanently delete menu item
-router.delete("/:id/menu/:itemId", requireAuth, requireRole("restaurant_owner"), async (req: AuthRequest, res) => {
-  const restaurantId = parseInt(String(req.params.id));
+router.delete("/:id/menu/:itemId", requireAuth, requireRole("store_owner"), async (req: AuthRequest, res) => {
+  const storeId = parseInt(String(req.params.id));
   const itemId = parseInt(String(req.params.itemId));
-  if (isNaN(restaurantId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
+  if (isNaN(storeId) || isNaN(itemId)) { res.status(400).json({ error: "bad_request" }); return; }
 
-  const ownership = await requireOwnership(restaurantId, req.user!.id);
+  const ownership = await requireOwnership(storeId, req.user!.id);
   if (ownership === "not_found") { res.status(404).json({ error: "not_found" }); return; }
   if (ownership === "forbidden") { res.status(403).json({ error: "forbidden", message: "Not your restaurant" }); return; }
 
-  const [deleted] = await db.delete(menuItemsTable)
-    .where(and(eq(menuItemsTable.id, itemId), eq(menuItemsTable.storeId, restaurantId)))
+  const [deleted] = await db.delete(productsTable)
+    .where(and(eq(productsTable.id, itemId), eq(productsTable.storeId, storeId)))
     .returning();
 
   if (!deleted) { res.status(404).json({ error: "not_found", message: "Item not found" }); return; }

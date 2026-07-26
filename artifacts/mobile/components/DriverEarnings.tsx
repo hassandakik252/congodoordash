@@ -206,7 +206,7 @@ export default function DriverEarnings() {
                 <View key={d.id} style={styles.deliveryCard}>
                   <View style={styles.deliveryTop}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.deliveryRestaurant}>{d.restaurantName}</Text>
+                      <Text style={styles.deliveryRestaurant}>{d.storeName}</Text>
                       <Text style={styles.deliveryAddress} numberOfLines={1}>{d.deliveryAddress}</Text>
                       <Text style={styles.deliveryDate}>{formatDateShort(d.deliveredAt)}</Text>
                     </View>

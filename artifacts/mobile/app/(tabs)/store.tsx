@@ -12,7 +12,7 @@ import Colors from "@/constants/colors";
 import { pickAndUploadImage } from "@/utils/imageUpload";
 import StoreOnboarding from "@/components/StoreOnboarding";
 import { useLang } from "@/context/LanguageContext";
-import { restaurantApi } from "@/services/api";
+import { storeApi } from "@/services/api";
 import { formatCurrency } from "@/utils/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ export default function RestaurantProfileScreen() {
 
   const { data: restaurant, isLoading, isError } = useQuery<Restaurant>({
     queryKey: ["my-restaurant"],
-    queryFn: restaurantApi.mine,
+    queryFn: storeApi.mine,
   });
 
   // Populate form when data loads (only if not already dirty)
@@ -186,7 +186,7 @@ export default function RestaurantProfileScreen() {
   // ── Save mutation ──────────────────────────────────────────────────────────
 
   const saveMutation = useMutation({
-    mutationFn: (body: any) => restaurantApi.updateMine(body),
+    mutationFn: (body: any) => storeApi.updateMine(body),
     onSuccess: (updated) => {
       // Sync local state + query cache
       const f = restaurantToForm(updated);
@@ -271,7 +271,7 @@ export default function RestaurantProfileScreen() {
       {/* ── Fixed header ─────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{t("restaurantProfile")}</Text>
+          <Text style={styles.title}>{t("storeProfile")}</Text>
           <Text style={styles.subtitle} numberOfLines={1}>{restaurant.name}</Text>
         </View>
 

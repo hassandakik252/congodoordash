@@ -11,14 +11,14 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { pickAndUploadImage } from "@/utils/imageUpload";
 import { useLang } from "@/context/LanguageContext";
-import { restaurantApi } from "@/services/api";
+import { storeApi } from "@/services/api";
 import { formatCurrency } from "@/utils/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface MenuItem {
   id: number;
-  restaurantId: number;
+  storeId: number;
   name: string;
   description?: string | null;
   price: number;
@@ -307,14 +307,14 @@ export default function MenuManagementScreen() {
     data: restaurant, isLoading: rLoading, isError: rError,
   } = useQuery({
     queryKey: ["my-restaurant"],
-    queryFn: restaurantApi.mine,
+    queryFn: storeApi.mine,
   });
 
   const {
     data: items, isLoading: mLoading, refetch, isRefetching,
   } = useQuery({
     queryKey: ["my-menu"],
-    queryFn: restaurantApi.mineMenu,
+    queryFn: storeApi.mineMenu,
     enabled: !!restaurant,
   });
 
@@ -337,7 +337,7 @@ export default function MenuManagementScreen() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["my-menu"] });
 
   const addMutation = useMutation({
-    mutationFn: (body: any) => restaurantApi.addMenuItem(restaurant!.id, body),
+    mutationFn: (body: any) => storeApi.addMenuItem(restaurant!.id, body),
     onSuccess: () => { invalidate(); closeModal(); if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); },
     onError: (e: any) => Alert.alert(t("error"), e.message),
     onSettled: () => { saving.current = false; setIsSaving(false); },
@@ -345,7 +345,7 @@ export default function MenuManagementScreen() {
 
   const updateMutation = useMutation({
     mutationFn: ({ itemId, body }: { itemId: number; body: any }) =>
-      restaurantApi.updateMenuItem(restaurant!.id, itemId, body),
+      storeApi.updateMenuItem(restaurant!.id, itemId, body),
     onSuccess: () => { invalidate(); closeModal(); if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); },
     onError: (e: any) => Alert.alert(t("error"), e.message),
     onSettled: () => { saving.current = false; setIsSaving(false); },
@@ -353,7 +353,7 @@ export default function MenuManagementScreen() {
 
   const toggleMutation = useMutation({
     mutationFn: (itemId: number) =>
-      restaurantApi.toggleMenuItemAvailability(restaurant!.id, itemId),
+      storeApi.toggleMenuItemAvailability(restaurant!.id, itemId),
     onMutate: async (itemId: number) => {
       await qc.cancelQueries({ queryKey: ["my-menu"] });
       const prev = qc.getQueryData<MenuItem[]>(["my-menu"]);
@@ -371,7 +371,7 @@ export default function MenuManagementScreen() {
 
   const deleteMutation = useMutation({
     mutationFn: (itemId: number) =>
-      restaurantApi.deleteMenuItem(restaurant!.id, itemId),
+      storeApi.deleteMenuItem(restaurant!.id, itemId),
     onSuccess: () => { invalidate(); if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); },
     onError: (e: any) => Alert.alert(t("error"), e.message),
   });
@@ -482,7 +482,7 @@ export default function MenuManagementScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{t("menuManagement")}</Text>
-          <Text style={styles.restaurantName} numberOfLines={1}>{restaurant.name}</Text>
+          <Text style={styles.storeName} numberOfLines={1}>{restaurant.name}</Text>
         </View>
         <Pressable
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.textPrimary },
-  restaurantName: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
+  storeName: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
   addBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     backgroundColor: Colors.primary, paddingHorizontal: 14,

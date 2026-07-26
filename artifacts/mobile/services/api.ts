@@ -70,18 +70,18 @@ export const userApi = {
     }),
 };
 
-// STORES (was "restaurants" — endpoints kept at /restaurants alias server-side)
-export const restaurantApi = {
+// STORES (was "restaurants" — endpoints kept at /stores alias server-side)
+export const storeApi = {
   list: (params?: { category?: string; search?: string; vertical?: string }) => {
     const qs = new URLSearchParams();
     if (params?.category) qs.set("category", params.category);
     if (params?.search) qs.set("search", params.search);
     if (params?.vertical && params.vertical !== "restaurant") qs.set("vertical", params.vertical);
     const q = qs.toString();
-    return request<any[]>(`/restaurants${q ? `?${q}` : ""}`);
+    return request<any[]>(`/stores${q ? `?${q}` : ""}`);
   },
-  get: (id: number) => request<any>(`/restaurants/${id}`),
-  getMenu: (id: number) => request<any[]>(`/restaurants/${id}/menu`),
+  get: (id: number) => request<any>(`/stores/${id}`),
+  getMenu: (id: number) => request<any[]>(`/stores/${id}/menu`),
   // Paginated, searchable catalog for large grocery/retail/pharmacy stores.
   searchProducts: (
     storeId: number,
@@ -98,25 +98,22 @@ export const restaurantApi = {
     );
   },
   create: (body: any) =>
-    request<any>("/restaurants", { method: "POST", body: JSON.stringify(body) }),
-  addMenuItem: (restaurantId: number, body: any) =>
-    request<any>(`/restaurants/${restaurantId}/menu`, { method: "POST", body: JSON.stringify(body) }),
+    request<any>("/stores", { method: "POST", body: JSON.stringify(body) }),
+  addMenuItem: (storeId: number, body: any) =>
+    request<any>(`/stores/${storeId}/menu`, { method: "POST", body: JSON.stringify(body) }),
 
   // Owner management
-  mine: () => request<any>("/restaurants/mine"),
+  mine: () => request<any>("/stores/mine"),
   updateMine: (body: any) =>
-    request<any>("/restaurants/mine", { method: "PATCH", body: JSON.stringify(body) }),
-  mineMenu: () => request<any[]>("/restaurants/mine/menu"),
-  updateMenuItem: (restaurantId: number, itemId: number, body: any) =>
-    request<any>(`/restaurants/${restaurantId}/menu/${itemId}`, { method: "PATCH", body: JSON.stringify(body) }),
-  toggleMenuItemAvailability: (restaurantId: number, itemId: number) =>
-    request<any>(`/restaurants/${restaurantId}/menu/${itemId}/availability`, { method: "PATCH" }),
-  deleteMenuItem: (restaurantId: number, itemId: number) =>
-    request<any>(`/restaurants/${restaurantId}/menu/${itemId}`, { method: "DELETE" }),
+    request<any>("/stores/mine", { method: "PATCH", body: JSON.stringify(body) }),
+  mineMenu: () => request<any[]>("/stores/mine/menu"),
+  updateMenuItem: (storeId: number, itemId: number, body: any) =>
+    request<any>(`/stores/${storeId}/menu/${itemId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  toggleMenuItemAvailability: (storeId: number, itemId: number) =>
+    request<any>(`/stores/${storeId}/menu/${itemId}/availability`, { method: "PATCH" }),
+  deleteMenuItem: (storeId: number, itemId: number) =>
+    request<any>(`/stores/${storeId}/menu/${itemId}`, { method: "DELETE" }),
 };
-
-// Vertical-neutral alias; prefer `storeApi` in new code.
-export const storeApi = restaurantApi;
 
 // KYC DOCUMENTS
 export const kycApi = {
@@ -161,7 +158,7 @@ export const analyticsApi = {
       totals: { totalOrders: number; totalRevenue: number; cancelledOrders: number };
       ordersPerDay: Array<{ day: string; count: number }>;
       revenuePerDay: Array<{ day: string; revenue: number }>;
-      topRestaurants: Array<{ restaurantId: number; restaurantName: string; orderCount: number; revenue: number }>;
+      topRestaurants: Array<{ storeId: number; storeName: string; orderCount: number; revenue: number }>;
     }>(`/admin/analytics${qs ? "?" + qs : ""}`);
   },
 };
@@ -176,7 +173,7 @@ export const notificationApi = {
 
 // ── Order API types ──────────────────────────────────────────────────────────
 export interface CreateOrderPayload {
-  restaurantId: number;
+  storeId: number;
   items: Array<{ menuItemId: number; quantity: number; modifiers?: Array<{ groupName: string; label: string }> }>;
   deliveryAddress: string;
   paymentMethod: "cash" | "mobile_money" | "card";
@@ -247,10 +244,10 @@ export const adminApi = {
     request<any[]>(`/admin/orders${status && status !== "all" ? `?status=${status}` : ""}`),
 
   restaurants: (search?: string) =>
-    request<any[]>(`/admin/restaurants${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+    request<any[]>(`/admin/stores${search ? `?search=${encodeURIComponent(search)}` : ""}`),
 
   toggleRestaurant: (id: number) =>
-    request<any>(`/admin/restaurants/${id}/toggle`, { method: "PATCH" }),
+    request<any>(`/admin/stores/${id}/toggle`, { method: "PATCH" }),
 
   users: (role?: string, search?: string) => {
     const params = new URLSearchParams();
@@ -326,7 +323,7 @@ export const orderApi = {
 
 // REVIEWS
 export const reviewApi = {
-  submit: (body: { orderId: number; restaurantRating: number; driverRating?: number; comment?: string }) =>
+  submit: (body: { orderId: number; storeRating: number; driverRating?: number; comment?: string }) =>
     request<any>("/reviews", { method: "POST", body: JSON.stringify(body) }),
   check: (orderId: number) =>
     request<{ reviewed: boolean; review: any | null }>(`/reviews/check/${orderId}`),

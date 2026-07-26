@@ -17,18 +17,14 @@ export const productUnitEnum = pgEnum("product_unit", [
 ]);
 
 /**
- * Products for all verticals (was "menu items"). Restaurants use name / price /
- * category / isAvailable and leave the grocery fields null. Grocery, retail and
- * pharmacy stores additionally use stockQuantity (inventory), unit, sku, brand
- * and categoryId (aisle). stockQuantity = null means "unlimited" (restaurants).
- *
- * The physical table is still named "menu_items" to avoid a data migration;
- * the code refers to it as `productsTable`. `menuItemsTable` is kept as a
- * backward-compatible alias. Column `restaurant_id` is likewise the store FK.
+ * Products sold by a store. Restaurants use name / price / category /
+ * isAvailable and leave the grocery fields null. Grocery, retail and pharmacy
+ * stores additionally use stockQuantity (inventory), unit, sku, brand and
+ * categoryId (aisle). stockQuantity = null means "unlimited" (restaurants).
  */
-export const productsTable = pgTable("menu_items", {
+export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
-  storeId: integer("restaurant_id").notNull().references(() => storesTable.id),
+  storeId: integer("store_id").notNull().references(() => storesTable.id),
   name: text("name").notNull(),
   description: text("description"),
   price: integer("price").notNull(),
@@ -58,9 +54,3 @@ export const productsTable = pgTable("menu_items", {
 export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, createdAt: true });
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof productsTable.$inferSelect;
-
-// ── Backward-compatible aliases (pre-generalization names) ───────────────────
-export const menuItemsTable = productsTable;
-export const insertMenuItemSchema = insertProductSchema;
-export type InsertMenuItem = InsertProduct;
-export type MenuItem = Product;

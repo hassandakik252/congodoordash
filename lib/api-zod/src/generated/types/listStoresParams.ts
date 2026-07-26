@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListRestaurantsParams = {
+export type ListStoresParams = {
   category?: string;
   search?: string;
 };

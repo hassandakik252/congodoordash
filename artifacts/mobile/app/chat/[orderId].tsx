@@ -41,7 +41,7 @@ export default function OrderChatScreen() {
   const roleLabel = (r: string) =>
     r === "customer" ? (language === "fr" ? "Client" : "Customer")
     : r === "driver" ? (language === "fr" ? "Livreur" : "Driver")
-    : r === "restaurant_owner" ? (language === "fr" ? "Boutique" : "Store")
+    : r === "store_owner" ? (language === "fr" ? "Boutique" : "Store")
     : "Admin";
 
   return (

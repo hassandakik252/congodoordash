@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useLang } from "@/context/LanguageContext";
-import { restaurantApi } from "@/services/api";
+import { storeApi } from "@/services/api";
 import { formatCurrency, getGreeting, RESTAURANT_CATEGORIES, VERTICALS } from "@/utils/format";
 
 export default function CustomerHome() {
@@ -33,7 +33,7 @@ export default function CustomerHome() {
 
   const { data: restaurants, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["restaurants", activeVertical, activeCategory, debouncedSearch],
-    queryFn: () => restaurantApi.list({
+    queryFn: () => storeApi.list({
       vertical: activeVertical,
       // Category chips only apply to restaurants
       category: isRestaurant && activeCategory !== "all" ? activeCategory : undefined,
@@ -179,7 +179,7 @@ export default function CustomerHome() {
         renderItem={({ item }) => (
           <Pressable
             style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-            onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: item.id } })}
+            onPress={() => router.push({ pathname: "/store/[id]", params: { id: item.id } })}
           >
             {/* Placeholder image area */}
             <View style={styles.cardImage}>
@@ -193,7 +193,7 @@ export default function CustomerHome() {
 
             <View style={styles.cardBody}>
               <View style={styles.cardTop}>
-                <Text style={styles.restaurantName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.storeName} numberOfLines={1}>{item.name}</Text>
                 <View style={styles.ratingRow}>
                   <Ionicons name="star" size={13} color={Colors.accent} />
                   <Text style={styles.rating}>{item.rating?.toFixed(1)}</Text>
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   statusPillText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   cardBody: { padding: 14 },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  restaurantName: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginRight: 8 },
+  storeName: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginRight: 8 },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   rating: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.accent },
   category: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginBottom: 10 },

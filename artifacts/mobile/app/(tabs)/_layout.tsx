@@ -34,7 +34,7 @@ export default function TabLayout() {
 
   const isAdmin = role === "admin";
   const isDriver = role === "driver";
-  const isOwner = role === "restaurant_owner";
+  const isOwner = role === "store_owner";
   const isCustomer = role === "customer";
 
   return (
@@ -111,11 +111,11 @@ export default function TabLayout() {
         }
       />
       <Tabs.Screen
-        name="restaurant"
+        name="store"
         options={
           isOwner
             ? {
-                title: t("restaurantProfile"),
+                title: t("storeProfile"),
                 tabBarIcon: tabIcon("storefront-outline", "storefront"),
               }
             : { href: null }

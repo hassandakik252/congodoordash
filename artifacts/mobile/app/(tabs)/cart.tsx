@@ -28,7 +28,7 @@ function FieldError({ message }: { message?: string }) {
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const { t, language } = useLang();
-  const { items, restaurantId, restaurantName, deliveryFee, subtotal, total, updateQuantity, clearCart } = useCart();
+  const { items, storeId, storeName, deliveryFee, subtotal, total, updateQuantity, clearCart } = useCart();
   const { user, updateUser } = useAuth();
   const qc = useQueryClient();
 
@@ -122,7 +122,7 @@ export default function CartScreen() {
 
   const handleOrder = async () => {
     if (submitting.current) return;
-    if (items.length === 0 || !restaurantId) return;
+    if (items.length === 0 || !storeId) return;
     if (!validate()) {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -146,7 +146,7 @@ export default function CartScreen() {
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       await orderApi.create({
-        restaurantId,
+        storeId,
         items: items.map(i => ({
           menuItemId: i.menuItemId,
           quantity: i.quantity,
@@ -217,7 +217,7 @@ export default function CartScreen() {
       <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
         <View style={styles.header}>
           <Text style={styles.title}>{t("yourCart")}</Text>
-          <Text style={styles.restaurantLabel}>{restaurantName}</Text>
+          <Text style={styles.restaurantLabel}>{storeName}</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">

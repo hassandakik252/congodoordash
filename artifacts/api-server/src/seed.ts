@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import {
-  restaurantsTable,
-  menuItemsTable,
+  storesTable,
+  productsTable,
   usersTable,
   ordersTable,
   reviewsTable,
@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 async function seed() {
   console.log("Seeding demo data…");
 
-  const existing = await db.select().from(restaurantsTable).limit(1);
+  const existing = await db.select().from(storesTable).limit(1);
   if (existing.length > 0) {
     console.log("Data already seeded. Skipping.");
     return;
@@ -27,7 +27,7 @@ async function seed() {
     passwordHash: await hash("admin1234"),
     name: "Admin Owner",
     phone: "+243810000000",
-    role: "restaurant_owner",
+    role: "store_owner",
     merchantStatus: "approved",
   }).returning();
   console.log(`Created owner: ${owner1.email}`);
@@ -37,7 +37,7 @@ async function seed() {
     passwordHash: await hash("owner1234"),
     name: "Sophie Kabila",
     phone: "+243810000008",
-    role: "restaurant_owner",
+    role: "store_owner",
     merchantStatus: "approved",
   }).returning();
   console.log(`Created owner: ${owner2.email}`);
@@ -47,7 +47,7 @@ async function seed() {
     passwordHash: await hash("owner1234"),
     name: "Jean-Pierre Mutombo",
     phone: "+243810000009",
-    role: "restaurant_owner",
+    role: "store_owner",
     merchantStatus: "approved",
   }).returning();
   console.log(`Created owner: ${owner3.email}`);
@@ -119,7 +119,7 @@ async function seed() {
 
   // ── Stores ─────────────────────────────────────────────────────────────────
 
-  const stores = await db.insert(restaurantsTable).values([
+  const stores = await db.insert(storesTable).values([
     // ── Restaurants (owner1) ────────────────────────────────────────────────
     {
       ownerId: owner1.id,
@@ -287,7 +287,7 @@ async function seed() {
     brand?: string;
   };
 
-  const allItems = await db.insert(menuItemsTable).values([
+  const allItems = await db.insert(productsTable).values([
     // ── Chez Mama Ngozi ──
     { storeId: storeMama.id, name: "Fufu + Saka-Saka", description: "Fufu de manioc avec saka-saka aux crevettes", price: 8000, category: "Plats", isAvailable: true },
     { storeId: storeMama.id, name: "Poisson Braisé", description: "Poisson du lac braisé avec bananes plantains", price: 12000, category: "Plats", isAvailable: true },
@@ -388,8 +388,8 @@ async function seed() {
     // 1. PENDING — cash/pending
     {
       customerId: customer1.id,
-      restaurantId: storeMama.id,
-      restaurantName: storeMama.name,
+      storeId: storeMama.id,
+      storeName: storeMama.name,
       status: "pending" as const,
       paymentMethod: "cash" as const,
       paymentStatus: "pending" as const,
@@ -409,8 +409,8 @@ async function seed() {
     // 2. CONFIRMED — mobile_money/submitted
     {
       customerId: customer2.id,
-      restaurantId: storePoulet.id,
-      restaurantName: storePoulet.name,
+      storeId: storePoulet.id,
+      storeName: storePoulet.name,
       status: "confirmed" as const,
       paymentMethod: "mobile_money" as const,
       paymentStatus: "submitted" as const,
@@ -434,8 +434,8 @@ async function seed() {
     // 3. PREPARING — cash/pending
     {
       customerId: customer1.id,
-      restaurantId: storePizza.id,
-      restaurantName: storePizza.name,
+      storeId: storePizza.id,
+      storeName: storePizza.name,
       status: "preparing" as const,
       paymentMethod: "cash" as const,
       paymentStatus: "pending" as const,
@@ -456,8 +456,8 @@ async function seed() {
     {
       customerId: customer2.id,
       driverId: driver1.id,
-      restaurantId: storeDragon.id,
-      restaurantName: storeDragon.name,
+      storeId: storeDragon.id,
+      storeName: storeDragon.name,
       status: "ready_for_pickup" as const,
       paymentMethod: "mobile_money" as const,
       paymentStatus: "confirmed" as const,
@@ -483,8 +483,8 @@ async function seed() {
     {
       customerId: customer1.id,
       driverId: driver2.id,
-      restaurantId: storeJuices.id,
-      restaurantName: storeJuices.name,
+      storeId: storeJuices.id,
+      storeName: storeJuices.name,
       status: "picked_up" as const,
       paymentMethod: "cash" as const,
       paymentStatus: "pending" as const,
@@ -505,8 +505,8 @@ async function seed() {
     {
       customerId: customer1.id,
       driverId: driver1.id,
-      restaurantId: storeMama.id,
-      restaurantName: storeMama.name,
+      storeId: storeMama.id,
+      storeName: storeMama.name,
       status: "delivered" as const,
       paymentMethod: "cash" as const,
       paymentStatus: "paid" as const,
@@ -529,8 +529,8 @@ async function seed() {
     {
       customerId: customer2.id,
       driverId: driver2.id,
-      restaurantId: storePoulet.id,
-      restaurantName: storePoulet.name,
+      storeId: storePoulet.id,
+      storeName: storePoulet.name,
       status: "delivered" as const,
       paymentMethod: "mobile_money" as const,
       paymentStatus: "confirmed" as const,
@@ -555,8 +555,8 @@ async function seed() {
     // 8. CANCELLED — mobile_money/failed
     {
       customerId: customer2.id,
-      restaurantId: storeBar.id,
-      restaurantName: storeBar.name,
+      storeId: storeBar.id,
+      storeName: storeBar.name,
       status: "cancelled" as const,
       paymentMethod: "mobile_money" as const,
       paymentStatus: "failed" as const,
@@ -593,18 +593,18 @@ async function seed() {
     {
       orderId: deliveredCash.id,
       customerId: customer1.id,
-      restaurantId: storeMama.id,
+      storeId: storeMama.id,
       driverId: driver1.id,
-      restaurantRating: 5,
+      storeRating: 5,
       driverRating: 5,
       comment: "Fufu excellent, poisson bien braisé ! Livreur très rapide et souriant. Je recommande vivement Chez Mama Ngozi.",
     },
     {
       orderId: deliveredMM.id,
       customerId: customer2.id,
-      restaurantId: storePoulet.id,
+      storeId: storePoulet.id,
       driverId: driver2.id,
-      restaurantRating: 4,
+      storeRating: 4,
       driverRating: 5,
       comment: "Poulet bien cuit et chaud à la livraison. Paiement M-Pesa sans problème. Juste un peu d'attente mais ça valait le coup.",
     },

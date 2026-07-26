@@ -64,13 +64,13 @@ const ROLE_LABELS: Record<string, string> = {
   all: "Tous",
   customer: "Clients",
   driver: "Livreurs",
-  restaurant_owner: "Propriétaires",
+  store_owner: "Propriétaires",
 };
 
 const ROLE_COLORS: Record<string, string> = {
   customer: "#3B82F6",
   driver: "#F97316",
-  restaurant_owner: "#8B5CF6",
+  store_owner: "#8B5CF6",
 };
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -256,7 +256,7 @@ function OrdersScreen() {
                 <Badge label={STATUS_LABELS[o.status] || o.status} color={STATUS_COLORS[o.status] || Colors.textMuted} />
               </View>
               <Text style={styles.cardMain}>{o.customerName || "—"}</Text>
-              <Text style={styles.cardSub}>{o.restaurantName || "—"}</Text>
+              <Text style={styles.cardSub}>{o.storeName || "—"}</Text>
               <View style={styles.cardRow}>
                 <Badge
                   label={o.paymentMethod === "cash" ? "Espèces" : "Mobile"}
@@ -400,7 +400,7 @@ function UsersScreen() {
     }
   };
 
-  const roles = ["all", "customer", "driver", "restaurant_owner"];
+  const roles = ["all", "customer", "driver", "store_owner"];
 
   return (
     <View style={{ flex: 1 }}>
@@ -1394,13 +1394,13 @@ function AdminAnalyticsScreen() {
                   const maxCount = data.topRestaurants[0].orderCount || 1;
                   const pct = (r.orderCount / maxCount) * 100;
                   return (
-                    <View key={r.restaurantId}>
+                    <View key={r.storeId}>
                       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
                           <View style={[styles.rankBadge, i === 0 && { backgroundColor: Colors.accent }]}>
                             <Text style={styles.rankText}>#{i + 1}</Text>
                           </View>
-                          <Text style={styles.restaurantName} numberOfLines={1}>{r.restaurantName}</Text>
+                          <Text style={styles.storeName} numberOfLines={1}>{r.storeName}</Text>
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
                           <Text style={styles.restaurantOrders}>{r.orderCount} cmd</Text>
@@ -1926,7 +1926,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: Colors.textPrimary,
   },
-  restaurantName: {
+  storeName: {
     flex: 1,
     fontFamily: "Inter_500Medium",
     fontSize: 13,

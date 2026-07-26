@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type UserRole = "customer" | "restaurant_owner" | "driver" | "admin";
+export type UserRole = "customer" | "store_owner" | "driver" | "admin";
 
 export interface SavedAddress {
   label: string;

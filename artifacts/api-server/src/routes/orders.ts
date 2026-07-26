@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ordersTable, restaurantsTable, menuItemsTable, usersTable, reviewsTable, promoCodesTable } from "@workspace/db/schema";
+import { ordersTable, storesTable, productsTable, usersTable, reviewsTable, promoCodesTable } from "@workspace/db/schema";
 import { eq, and, or, inArray, isNull, desc, sql, getTableColumns } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
@@ -40,7 +40,7 @@ const approveSubsSchema = z.object({
 });
 
 const createOrderSchema = z.object({
-  restaurantId: z.number().int().positive(),
+  storeId: z.number().int().positive(),
   items: z.array(z.object({
     menuItemId: z.number().int().positive(),
     quantity: z.number().int().positive(),
@@ -90,17 +90,17 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
         .map(r => r.orderId)
     );
     orders = rawOrders.map(o => ({ ...o, reviewed: reviewedIds.has(o.id) }));
-  } else if (user.role === "restaurant_owner") {
-    const myRestaurants = await db
-      .select({ id: restaurantsTable.id })
-      .from(restaurantsTable)
-      .where(eq(restaurantsTable.ownerId, user.id));
-    const restaurantIds = myRestaurants.map(r => r.id);
-    orders = restaurantIds.length > 0
+  } else if (user.role === "store_owner") {
+    const myStores = await db
+      .select({ id: storesTable.id })
+      .from(storesTable)
+      .where(eq(storesTable.ownerId, user.id));
+    const storeIds = myStores.map(r => r.id);
+    orders = storeIds.length > 0
       ? await db
           .select()
           .from(ordersTable)
-          .where(inArray(ordersTable.restaurantId, restaurantIds))
+          .where(inArray(ordersTable.storeId, storeIds))
           .orderBy(desc(ordersTable.createdAt))
       : [];
   } else {
@@ -123,7 +123,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   }
 
   const {
-    restaurantId, items, deliveryAddress,
+    storeId, items, deliveryAddress,
     paymentMethod, paymentProvider, paymentReference, paymentPhone,
     notes, driverInstructions, promoCode, tip: tipInput, scheduledFor: scheduledForInput,
   } = parsed.data;
@@ -139,18 +139,18 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
     scheduledFor = d;
   }
 
-  const [restaurant] = await db
+  const [store] = await db
     .select()
-    .from(restaurantsTable)
-    .where(eq(restaurantsTable.id, restaurantId))
+    .from(storesTable)
+    .where(eq(storesTable.id, storeId))
     .limit(1);
 
-  if (!restaurant) {
+  if (!store) {
     res.status(404).json({ error: "not_found", message: "Restaurant not found" });
     return;
   }
 
-  if (!restaurant.isOpen) {
+  if (!store.isOpen) {
     res.status(409).json({ error: "restaurant_closed", message: "Ce restaurant est actuellement fermé." });
     return;
   }
@@ -165,8 +165,8 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   const menuItemIds = items.map(i => i.menuItemId);
   const menuItems = await db
     .select()
-    .from(menuItemsTable)
-    .where(inArray(menuItemsTable.id, menuItemIds));
+    .from(productsTable)
+    .where(inArray(productsTable.id, menuItemIds));
 
   const menuItemMap = new Map(menuItems.map(m => [m.id, m]));
 
@@ -203,7 +203,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
   }
 
   const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const deliveryFee = restaurant.deliveryFee;
+  const deliveryFee = store.deliveryFee;
 
   // Validate and apply promo code if provided
   let appliedPromo: { id: number; code: string; discountAmount: number } | null = null;
@@ -247,13 +247,13 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
     order = await db.transaction(async (tx) => {
       for (const { oi } of stockTracked) {
         const decremented = await tx
-          .update(menuItemsTable)
-          .set({ stockQuantity: sql`${menuItemsTable.stockQuantity} - ${oi.quantity}` })
+          .update(productsTable)
+          .set({ stockQuantity: sql`${productsTable.stockQuantity} - ${oi.quantity}` })
           .where(and(
-            eq(menuItemsTable.id, oi.menuItemId),
-            sql`${menuItemsTable.stockQuantity} >= ${oi.quantity}`,
+            eq(productsTable.id, oi.menuItemId),
+            sql`${productsTable.stockQuantity} >= ${oi.quantity}`,
           ))
-          .returning({ id: menuItemsTable.id });
+          .returning({ id: productsTable.id });
         if (decremented.length === 0) {
           throw new OutOfStockError(oi.name);
         }
@@ -263,8 +263,8 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
         .insert(ordersTable)
         .values({
           customerId: req.user!.id,
-          restaurantId,
-          restaurantName: restaurant.name,
+          storeId,
+          storeName: store.name,
           items: orderItems,
           deliveryAddress,
           paymentMethod,
@@ -311,7 +311,7 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
 
   // Notify restaurant owner of new order
   createNotification({
-    userId: restaurant.ownerId,
+    userId: store.ownerId,
     type: "new_order",
     title: "Nouvelle commande !",
     body: `Commande #${order.id} reçue — ${orderItems.length} article(s) · ${total.toLocaleString()} CDF`,
@@ -327,9 +327,9 @@ router.post("/", requireAuth, requireRole("customer"), async (req: AuthRequest, 
 // driver can go shop the order. A `vertical` field is attached for the app.
 router.get("/available", requireAuth, requireRole("driver"), async (req: AuthRequest, res) => {
   const orders = await db
-    .select({ ...getTableColumns(ordersTable), vertical: restaurantsTable.vertical })
+    .select({ ...getTableColumns(ordersTable), vertical: storesTable.vertical })
     .from(ordersTable)
-    .leftJoin(restaurantsTable, eq(ordersTable.restaurantId, restaurantsTable.id))
+    .leftJoin(storesTable, eq(ordersTable.storeId, storesTable.id))
     .where(
       and(
         isNull(ordersTable.driverId),
@@ -338,7 +338,7 @@ router.get("/available", requireAuth, requireRole("driver"), async (req: AuthReq
         or(
           eq(ordersTable.status, "ready_for_pickup"),
           and(
-            sql`${restaurantsTable.vertical} <> 'restaurant'`,
+            sql`${storesTable.vertical} <> 'restaurant'`,
             inArray(ordersTable.status, ["confirmed", "preparing"]),
           ),
         ),
@@ -387,17 +387,17 @@ router.get("/:id", requireAuth, async (req: AuthRequest, res) => {
     const isCustomer = order.customerId === user.id;
     const isDriver = order.driverId === user.id;
 
-    let isRestaurantOwner = false;
-    if (user.role === "restaurant_owner") {
-      const [restaurant] = await db
-        .select({ ownerId: restaurantsTable.ownerId })
-        .from(restaurantsTable)
-        .where(eq(restaurantsTable.id, order.restaurantId))
+    let isStoreOwner = false;
+    if (user.role === "store_owner") {
+      const [store] = await db
+        .select({ ownerId: storesTable.ownerId })
+        .from(storesTable)
+        .where(eq(storesTable.id, order.storeId))
         .limit(1);
-      isRestaurantOwner = restaurant?.ownerId === user.id;
+      isStoreOwner = store?.ownerId === user.id;
     }
 
-    if (!isCustomer && !isDriver && !isRestaurantOwner) {
+    if (!isCustomer && !isDriver && !isStoreOwner) {
       res.status(403).json({ error: "forbidden", message: "You do not have access to this order" });
       return;
     }
@@ -418,9 +418,9 @@ router.post("/:id/accept", requireAuth, requireRole("driver"), async (req: AuthR
 
   // Look up current status + store vertical to decide claimability.
   const [existing] = await db
-    .select({ status: ordersTable.status, driverId: ordersTable.driverId, vertical: restaurantsTable.vertical })
+    .select({ status: ordersTable.status, driverId: ordersTable.driverId, vertical: storesTable.vertical })
     .from(ordersTable)
-    .leftJoin(restaurantsTable, eq(ordersTable.restaurantId, restaurantsTable.id))
+    .leftJoin(storesTable, eq(ordersTable.storeId, storesTable.id))
     .where(eq(ordersTable.id, id))
     .limit(1);
 
@@ -557,11 +557,11 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
 
   // Store owners may only touch orders at a store they own, and only the
   // preparation stages (pickup/delivery are the driver's actions).
-  if (user.role === "restaurant_owner") {
+  if (user.role === "store_owner") {
     const [store] = await db
-      .select({ ownerId: restaurantsTable.ownerId })
-      .from(restaurantsTable)
-      .where(eq(restaurantsTable.id, order.restaurantId))
+      .select({ ownerId: storesTable.ownerId })
+      .from(storesTable)
+      .where(eq(storesTable.id, order.storeId))
       .limit(1);
     if (!store || store.ownerId !== user.id) {
       res.status(403).json({ error: "forbidden", message: "Not your store's order" });
@@ -575,7 +575,7 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
 
   // Anyone who isn't the customer, assigned driver, owning merchant, or an admin
   // has no business changing an order's status.
-  if (!["customer", "driver", "restaurant_owner", "admin"].includes(user.role)) {
+  if (!["customer", "driver", "store_owner", "admin"].includes(user.role)) {
     res.status(403).json({ error: "forbidden", message: "Not permitted" });
     return;
   }
@@ -615,9 +615,9 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
 
       for (const it of order.items) {
         await tx
-          .update(menuItemsTable)
-          .set({ stockQuantity: sql`${menuItemsTable.stockQuantity} + ${it.quantity}` })
-          .where(and(eq(menuItemsTable.id, it.menuItemId), sql`${menuItemsTable.stockQuantity} IS NOT NULL`));
+          .update(productsTable)
+          .set({ stockQuantity: sql`${productsTable.stockQuantity} + ${it.quantity}` })
+          .where(and(eq(productsTable.id, it.menuItemId), sql`${productsTable.stockQuantity} IS NOT NULL`));
       }
       if (order.promoCode) {
         await tx
@@ -652,7 +652,7 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
       userId: order.customerId,
       type: "order_confirmed",
       title: "Commande confirmée ✓",
-      body: `${orderRef} a été confirmée par ${order.restaurantName}.`,
+      body: `${orderRef} a été confirmée par ${order.storeName}.`,
       orderId: id,
     }).catch(err => console.error("[notify] order_confirmed for order", id, err));
   } else if (status === "preparing") {
@@ -773,9 +773,9 @@ router.patch("/:id/pick", requireAuth, async (req: AuthRequest, res) => {
   const user = req.user!;
   // Authorize: assigned driver, the store's owner, or an admin.
   let isStoreOwner = false;
-  if (user.role === "restaurant_owner") {
-    const [store] = await db.select({ ownerId: restaurantsTable.ownerId })
-      .from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
+  if (user.role === "store_owner") {
+    const [store] = await db.select({ ownerId: storesTable.ownerId })
+      .from(storesTable).where(eq(storesTable.id, order.storeId)).limit(1);
     isStoreOwner = store?.ownerId === user.id;
   }
   const isAssignedDriver = order.driverId === user.id;

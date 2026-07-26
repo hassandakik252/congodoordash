@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { ordersTable, orderMessagesTable, restaurantsTable } from "@workspace/db/schema";
+import { ordersTable, orderMessagesTable, storesTable } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, AuthRequest } from "../middlewares/auth";
 import { createNotification } from "../lib/notify";
@@ -9,13 +9,13 @@ import { z } from "zod";
 const router: IRouter = Router();
 
 /** Is this user a participant of the order (customer / assigned driver / store owner / admin)? */
-async function participantOf(order: { customerId: number; driverId: number | null; restaurantId: number }, user: { id: number; role: string }): Promise<boolean> {
+async function participantOf(order: { customerId: number; driverId: number | null; storeId: number }, user: { id: number; role: string }): Promise<boolean> {
   if (user.role === "admin") return true;
   if (order.customerId === user.id) return true;
   if (order.driverId === user.id) return true;
-  if (user.role === "restaurant_owner") {
-    const [store] = await db.select({ ownerId: restaurantsTable.ownerId })
-      .from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
+  if (user.role === "store_owner") {
+    const [store] = await db.select({ ownerId: storesTable.ownerId })
+      .from(storesTable).where(eq(storesTable.id, order.storeId)).limit(1);
     if (store?.ownerId === user.id) return true;
   }
   return false;
@@ -23,7 +23,7 @@ async function participantOf(order: { customerId: number; driverId: number | nul
 
 async function loadOrderAndAuthorize(id: number, user: { id: number; role: string }) {
   const [order] = await db
-    .select({ id: ordersTable.id, customerId: ordersTable.customerId, driverId: ordersTable.driverId, restaurantId: ordersTable.restaurantId })
+    .select({ id: ordersTable.id, customerId: ordersTable.customerId, driverId: ordersTable.driverId, storeId: ordersTable.storeId })
     .from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) return { error: "not_found" as const };
   if (!(await participantOf(order, user))) return { error: "forbidden" as const };

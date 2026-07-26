@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 
 import app from "../app";
-import { db, usersTable, restaurantsTable, menuItemsTable } from "@workspace/db";
+import { db, usersTable, storesTable, productsTable } from "@workspace/db";
 import bcrypt from "bcryptjs";
 
 let base = "";
@@ -40,14 +40,14 @@ before(async () => {
   // Minimal seed: an owner + a grocery store with one stocked product.
   const [owner] = await db.insert(usersTable).values({
     email: `itest-owner-${Date.now()}@x.com`, passwordHash: await bcrypt.hash("x", 4),
-    name: "ITest Owner", phone: "+243000", role: "restaurant_owner", merchantStatus: "approved",
+    name: "ITest Owner", phone: "+243000", role: "store_owner", merchantStatus: "approved",
   }).returning();
-  const [store] = await db.insert(restaurantsTable).values({
+  const [store] = await db.insert(storesTable).values({
     ownerId: owner.id, vertical: "grocery", name: "ITest Mart", category: "Épicerie",
     address: "Av Test", phone: "+243111", deliveryFee: 1000, deliveryTimeMin: 30,
   }).returning();
   storeId = store.id;
-  const [product] = await db.insert(menuItemsTable).values({
+  const [product] = await db.insert(productsTable).values({
     storeId: store.id, name: "ITest Rice", price: 5000, category: "Céréales", stockQuantity: 5, unit: "pack",
   }).returning();
   productId = product.id;
@@ -82,7 +82,7 @@ test("full order flow + inventory enforcement", async () => {
 
   // Over-order (10 > stock 5) → 409 out_of_stock, stock untouched
   const over = await j("POST", "/orders", {
-    restaurantId: storeId, items: [{ menuItemId: productId, quantity: 10 }],
+    storeId: storeId, items: [{ menuItemId: productId, quantity: 10 }],
     deliveryAddress: "Av", paymentMethod: "cash",
   }, token);
   assert.equal(over.status, 409);
@@ -90,7 +90,7 @@ test("full order flow + inventory enforcement", async () => {
 
   // Valid order (3 ≤ 5) → 201
   const ok = await j("POST", "/orders", {
-    restaurantId: storeId, items: [{ menuItemId: productId, quantity: 3 }],
+    storeId: storeId, items: [{ menuItemId: productId, quantity: 3 }],
     deliveryAddress: "Av", paymentMethod: "cash",
   }, token);
   assert.equal(ok.status, 201);
@@ -106,11 +106,11 @@ test("a merchant cannot change another store's order status", async () => {
   // Customer places an order at our store.
   const cEmail = `itest-c3-${Date.now()}@x.com`;
   const cTok = (await j("POST", "/auth/register", { email: cEmail, password: "pass1234", name: "C", phone: "+243", role: "customer", acceptTerms: true })).data.token;
-  const oid = (await j("POST", "/orders", { restaurantId: storeId, items: [{ menuItemId: productId, quantity: 1 }], deliveryAddress: "Av", paymentMethod: "cash" }, cTok)).data.id;
+  const oid = (await j("POST", "/orders", { storeId: storeId, items: [{ menuItemId: productId, quantity: 1 }], deliveryAddress: "Av", paymentMethod: "cash" }, cTok)).data.id;
 
   // A different merchant (no store here) tries to advance it → 403.
   const mEmail = `itest-m2-${Date.now()}@x.com`;
-  const mTok = (await j("POST", "/auth/register", { email: mEmail, password: "pass1234", name: "M2", phone: "+243", role: "restaurant_owner", acceptTerms: true })).data.token;
+  const mTok = (await j("POST", "/auth/register", { email: mEmail, password: "pass1234", name: "M2", phone: "+243", role: "store_owner", acceptTerms: true })).data.token;
   const res = await j("PATCH", `/orders/${oid}/status`, { status: "confirmed" }, mTok);
   assert.equal(res.status, 403, "non-owning merchant blocked");
 });
@@ -120,7 +120,7 @@ test("cancelling a tracked order restores stock", async () => {
   const cTok = (await j("POST", "/auth/register", { email: cEmail, password: "pass1234", name: "C", phone: "+243", role: "customer", acceptTerms: true })).data.token;
 
   // Dedicated product with known stock so prior tests don't interfere.
-  const [prod] = await db.insert(menuItemsTable).values({
+  const [prod] = await db.insert(productsTable).values({
     storeId, name: `ITest Cancel ${Date.now()}`, price: 3000, category: "Céréales", stockQuantity: 10, unit: "pack",
   }).returning();
 
@@ -128,7 +128,7 @@ test("cancelling a tracked order restores stock", async () => {
     (await j("GET", `/stores/${storeId}/products?search=ITest Cancel`)).data.items.find((i: any) => i.id === prod.id).stockQuantity;
 
   const before = await stockOf();
-  const oid = (await j("POST", "/orders", { restaurantId: storeId, items: [{ menuItemId: prod.id, quantity: 2 }], deliveryAddress: "Av", paymentMethod: "cash" }, cTok)).data.id;
+  const oid = (await j("POST", "/orders", { storeId: storeId, items: [{ menuItemId: prod.id, quantity: 2 }], deliveryAddress: "Av", paymentMethod: "cash" }, cTok)).data.id;
   assert.equal(await stockOf(), before - 2, "stock decremented on order");
 
   const cancel = await j("PATCH", `/orders/${oid}/status`, { status: "cancelled" }, cTok);

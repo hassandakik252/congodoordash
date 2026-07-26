@@ -11,8 +11,8 @@ tags:
     description: Health operations
   - name: auth
     description: Authentication
-  - name: restaurants
-    description: Restaurant operations
+  - name: stores
+    description: Store operations
   - name: menu
     description: Menu items
   - name: orders
@@ -112,11 +112,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /restaurants:
+  /stores:
     get:
-      operationId: listRestaurants
-      tags: [restaurants]
-      summary: List all restaurants
+      operationId: listStores
+      tags: [stores]
+      summary: List all stores
       parameters:
         - name: category
           in: query
@@ -128,17 +128,17 @@ paths:
             type: string
       responses:
         "200":
-          description: List of restaurants
+          description: List of stores
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Restaurant"
+                  $ref: "#/components/schemas/Store"
     post:
-      operationId: createRestaurant
-      tags: [restaurants]
-      summary: Create a restaurant
+      operationId: createStore
+      tags: [stores]
+      summary: Create a store
       security:
         - bearerAuth: []
       requestBody:
@@ -146,20 +146,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateRestaurantRequest"
+              $ref: "#/components/schemas/CreateStoreRequest"
       responses:
         "201":
-          description: Restaurant created
+          description: Store created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Restaurant"
+                $ref: "#/components/schemas/Store"
 
-  /restaurants/{id}:
+  /stores/{id}:
     get:
-      operationId: getRestaurant
-      tags: [restaurants]
-      summary: Get a restaurant
+      operationId: getStore
+      tags: [stores]
+      summary: Get a store
       parameters:
         - name: id
           in: path
@@ -168,11 +168,11 @@ paths:
             type: integer
       responses:
         "200":
-          description: Restaurant
+          description: Store
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Restaurant"
+                $ref: "#/components/schemas/Store"
         "404":
           description: Not found
           content:
@@ -180,11 +180,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /restaurants/{id}/menu:
+  /stores/{id}/menu:
     get:
-      operationId: getRestaurantMenu
+      operationId: getStoreMenu
       tags: [menu]
-      summary: Get menu for a restaurant
+      summary: Get menu for a store
       parameters:
         - name: id
           in: path
@@ -407,7 +407,7 @@ components:
           type: string
         role:
           type: string
-          enum: [customer, restaurant_owner, driver]
+          enum: [customer, store_owner, driver]
       required:
         - email
         - password
@@ -451,7 +451,7 @@ components:
           type: string
         role:
           type: string
-          enum: [customer, restaurant_owner, driver]
+          enum: [customer, store_owner, driver]
         address:
           type: string
         createdAt:
@@ -475,7 +475,7 @@ components:
         address:
           type: string
 
-    Restaurant:
+    Store:
       type: object
       properties:
         id:
@@ -518,7 +518,7 @@ components:
         - isOpen
         - createdAt
 
-    CreateRestaurantRequest:
+    CreateStoreRequest:
       type: object
       properties:
         name:
@@ -550,7 +550,7 @@ components:
       properties:
         id:
           type: integer
-        restaurantId:
+        storeId:
           type: integer
         name:
           type: string
@@ -566,7 +566,7 @@ components:
           type: boolean
       required:
         - id
-        - restaurantId
+        - storeId
         - name
         - price
         - category
@@ -616,9 +616,9 @@ components:
           type: integer
         driverId:
           type: integer
-        restaurantId:
+        storeId:
           type: integer
-        restaurantName:
+        storeName:
           type: string
         status:
           type: string
@@ -652,8 +652,8 @@ components:
       required:
         - id
         - customerId
-        - restaurantId
-        - restaurantName
+        - storeId
+        - storeName
         - status
         - paymentMethod
         - paymentStatus
@@ -668,7 +668,7 @@ components:
     CreateOrderRequest:
       type: object
       properties:
-        restaurantId:
+        storeId:
           type: integer
         items:
           type: array
@@ -690,7 +690,7 @@ components:
         notes:
           type: string
       required:
-        - restaurantId
+        - storeId
         - items
         - deliveryAddress
         - paymentMethod

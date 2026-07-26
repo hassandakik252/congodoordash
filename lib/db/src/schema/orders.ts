@@ -2,7 +2,7 @@ import { pgTable, serial, text, timestamp, integer, pgEnum, jsonb, boolean } fro
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
-import { restaurantsTable } from "./stores";
+import { storesTable } from "./stores";
 
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
@@ -37,8 +37,8 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").notNull().references(() => usersTable.id),
   driverId: integer("driver_id").references(() => usersTable.id),
-  restaurantId: integer("restaurant_id").notNull().references(() => restaurantsTable.id),
-  restaurantName: text("restaurant_name").notNull(),
+  storeId: integer("store_id").notNull().references(() => storesTable.id),
+  storeName: text("store_name").notNull(),
   status: orderStatusEnum("status").notNull().default("pending"),
 
   // ── Payment ─────────────────────────────────────────────────────────────────

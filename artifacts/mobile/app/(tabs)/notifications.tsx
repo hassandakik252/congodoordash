@@ -137,7 +137,7 @@ export default function NotificationsScreen() {
   const handlePress = useCallback((notif: Notification) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!notif.isRead) markRead.mutate(notif.id);
-    if (notif.orderId) router.push(`/order/${notif.orderId}` as any);
+    if (notif.orderId) router.push({ pathname: "/order/[id]", params: { id: notif.orderId } });
   }, [markRead]);
 
   const unreadCount = (notifications as Notification[]).filter(n => !n.isRead).length;

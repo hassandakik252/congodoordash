@@ -8,9 +8,9 @@ import Colors from "@/constants/colors";
 
 interface RatingModalProps {
   visible: boolean;
-  order: { id: number; restaurantName: string; driverId?: number | null } | null;
+  order: { id: number; storeName: string; driverId?: number | null } | null;
   onClose: () => void;
-  onSubmit: (payload: { orderId: number; restaurantRating: number; driverRating?: number; comment?: string }) => Promise<void>;
+  onSubmit: (payload: { orderId: number; storeRating: number; driverRating?: number; comment?: string }) => Promise<void>;
 }
 
 function StarRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
@@ -33,7 +33,7 @@ function StarRow({ label, value, onChange }: { label: string; value: number; onC
 }
 
 export default function RatingModal({ visible, order, onClose, onSubmit }: RatingModalProps) {
-  const [restaurantRating, setRestaurantRating] = useState(0);
+  const [storeRating, setRestaurantRating] = useState(0);
   const [driverRating, setDriverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,7 +53,7 @@ export default function RatingModal({ visible, order, onClose, onSubmit }: Ratin
 
   const handleSubmit = async () => {
     if (!order) return;
-    if (restaurantRating === 0) {
+    if (storeRating === 0) {
       setError("Veuillez noter le restaurant.");
       return;
     }
@@ -62,7 +62,7 @@ export default function RatingModal({ visible, order, onClose, onSubmit }: Ratin
     try {
       await onSubmit({
         orderId: order.id,
-        restaurantRating,
+        storeRating,
         driverRating: driverRating > 0 ? driverRating : undefined,
         comment: comment.trim() || undefined,
       });
@@ -93,12 +93,12 @@ export default function RatingModal({ visible, order, onClose, onSubmit }: Ratin
             </Pressable>
           </View>
 
-          <Text style={styles.restaurantName}>{order.restaurantName}</Text>
+          <Text style={styles.storeName}>{order.storeName}</Text>
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 8 }}>
             <StarRow
               label="Restaurant"
-              value={restaurantRating}
+              value={storeRating}
               onChange={setRestaurantRating}
             />
 
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.textPrimary },
-  restaurantName: {
+  storeName: {
     fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textMuted,
     marginBottom: 20,
   },
