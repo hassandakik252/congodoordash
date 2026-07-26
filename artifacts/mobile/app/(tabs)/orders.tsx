@@ -21,7 +21,7 @@ export default function OrdersScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [ratingOrder, setRatingOrder] = useState<{ id: number; restaurantName: string; driverId?: number | null } | null>(null);
+  const [ratingOrder, setRatingOrder] = useState<{ id: number; storeName: string; driverId?: number | null } | null>(null);
   const [reviewedOrders, setReviewedOrders] = useState<Set<number>>(new Set());
 
   const { data: orders, isLoading, refetch, isRefetching } = useQuery({
@@ -61,7 +61,7 @@ export default function OrdersScreen() {
       >
         <View style={styles.cardTop}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.restaurantName}>{item.restaurantName}</Text>
+            <Text style={styles.storeName}>{item.storeName}</Text>
             <Text style={styles.orderDate}>{formatDate(item.createdAt)}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: getOrderStatusColor(item.status) + "22" }]}>
@@ -91,7 +91,7 @@ export default function OrdersScreen() {
             style={({ pressed }) => [styles.rateBtn, pressed && { opacity: 0.8 }]}
             onPress={(e) => {
               e.stopPropagation?.();
-              setRatingOrder({ id: item.id, restaurantName: item.restaurantName, driverId: item.driverId });
+              setRatingOrder({ id: item.id, storeName: item.storeName, driverId: item.driverId });
             }}
           >
             <Ionicons name="star-outline" size={14} color="#FFB800" />
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   cardActive: { borderColor: Colors.primary + "55", borderWidth: 1.5 },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
-  restaurantName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginBottom: 4 },
+  storeName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary, marginBottom: 4 },
   orderDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },

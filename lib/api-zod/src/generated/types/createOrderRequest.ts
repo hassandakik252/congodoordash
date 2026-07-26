@@ -9,7 +9,7 @@ import type { CreateOrderRequestItemsItem } from "./createOrderRequestItemsItem"
 import type { CreateOrderRequestPaymentMethod } from "./createOrderRequestPaymentMethod";
 
 export interface CreateOrderRequest {
-  restaurantId: number;
+  storeId: number;
   items: CreateOrderRequestItemsItem[];
   deliveryAddress: string;
   paymentMethod: CreateOrderRequestPaymentMethod;

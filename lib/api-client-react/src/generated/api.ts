@@ -20,15 +20,15 @@ import type {
   AuthResponse,
   CreateMenuItemRequest,
   CreateOrderRequest,
-  CreateRestaurantRequest,
+  CreateStoreRequest,
   ErrorResponse,
   HealthStatus,
-  ListRestaurantsParams,
+  ListStoresParams,
   LoginRequest,
   MenuItem,
   Order,
   RegisterRequest,
-  Restaurant,
+  Store,
   UpdateOrderStatusRequest,
   UpdateProfileRequest,
   User,
@@ -354,9 +354,9 @@ export function useGetMe<
 }
 
 /**
- * @summary List all restaurants
+ * @summary List all stores
  */
-export const getListRestaurantsUrl = (params?: ListRestaurantsParams) => {
+export const getListStoresUrl = (params?: ListStoresParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -368,32 +368,32 @@ export const getListRestaurantsUrl = (params?: ListRestaurantsParams) => {
   const stringifiedParams = normalizedParams.toString();
 
   return stringifiedParams.length > 0
-    ? `/api/restaurants?${stringifiedParams}`
-    : `/api/restaurants`;
+    ? `/api/stores?${stringifiedParams}`
+    : `/api/stores`;
 };
 
-export const listRestaurants = async (
-  params?: ListRestaurantsParams,
+export const listStores = async (
+  params?: ListStoresParams,
   options?: RequestInit,
-): Promise<Restaurant[]> => {
-  return customFetch<Restaurant[]>(getListRestaurantsUrl(params), {
+): Promise<Store[]> => {
+  return customFetch<Store[]>(getListStoresUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListRestaurantsQueryKey = (params?: ListRestaurantsParams) => {
-  return [`/api/restaurants`, ...(params ? [params] : [])] as const;
+export const getListStoresQueryKey = (params?: ListStoresParams) => {
+  return [`/api/stores`, ...(params ? [params] : [])] as const;
 };
 
-export const getListRestaurantsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listRestaurants>>,
+export const getListStoresQueryOptions = <
+  TData = Awaited<ReturnType<typeof listStores>>,
   TError = ErrorType<unknown>,
 >(
-  params?: ListRestaurantsParams,
+  params?: ListStoresParams,
   options?: {
     query?: UseQueryOptions<
-      Awaited<ReturnType<typeof listRestaurants>>,
+      Awaited<ReturnType<typeof listStores>>,
       TError,
       TData
     >;
@@ -402,43 +402,43 @@ export const getListRestaurantsQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListRestaurantsQueryKey(params);
+  const queryKey = queryOptions?.queryKey ?? getListStoresQueryKey(params);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRestaurants>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listStores>>> = ({
     signal,
-  }) => listRestaurants(params, { signal, ...requestOptions });
+  }) => listStores(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listRestaurants>>,
+    Awaited<ReturnType<typeof listStores>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type ListRestaurantsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listRestaurants>>
+export type ListStoresQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listStores>>
 >;
-export type ListRestaurantsQueryError = ErrorType<unknown>;
+export type ListStoresQueryError = ErrorType<unknown>;
 
 /**
- * @summary List all restaurants
+ * @summary List all stores
  */
 
-export function useListRestaurants<
-  TData = Awaited<ReturnType<typeof listRestaurants>>,
+export function useListStores<
+  TData = Awaited<ReturnType<typeof listStores>>,
   TError = ErrorType<unknown>,
 >(
-  params?: ListRestaurantsParams,
+  params?: ListStoresParams,
   options?: {
     query?: UseQueryOptions<
-      Awaited<ReturnType<typeof listRestaurants>>,
+      Awaited<ReturnType<typeof listStores>>,
       TError,
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListRestaurantsQueryOptions(params, options);
+  const queryOptions = getListStoresQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -448,42 +448,42 @@ export function useListRestaurants<
 }
 
 /**
- * @summary Create a restaurant
+ * @summary Create a store
  */
-export const getCreateRestaurantUrl = () => {
-  return `/api/restaurants`;
+export const getCreateStoreUrl = () => {
+  return `/api/stores`;
 };
 
-export const createRestaurant = async (
-  createRestaurantRequest: CreateRestaurantRequest,
+export const createStore = async (
+  createStoreRequest: CreateStoreRequest,
   options?: RequestInit,
-): Promise<Restaurant> => {
-  return customFetch<Restaurant>(getCreateRestaurantUrl(), {
+): Promise<Store> => {
+  return customFetch<Store>(getCreateStoreUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createRestaurantRequest),
+    body: JSON.stringify(createStoreRequest),
   });
 };
 
-export const getCreateRestaurantMutationOptions = <
+export const getCreateStoreMutationOptions = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createRestaurant>>,
+    Awaited<ReturnType<typeof createStore>>,
     TError,
-    { data: BodyType<CreateRestaurantRequest> },
+    { data: BodyType<CreateStoreRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof createRestaurant>>,
+  Awaited<ReturnType<typeof createStore>>,
   TError,
-  { data: BodyType<CreateRestaurantRequest> },
+  { data: BodyType<CreateStoreRequest> },
   TContext
 > => {
-  const mutationKey = ["createRestaurant"];
+  const mutationKey = ["createStore"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -493,75 +493,75 @@ export const getCreateRestaurantMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createRestaurant>>,
-    { data: BodyType<CreateRestaurantRequest> }
+    Awaited<ReturnType<typeof createStore>>,
+    { data: BodyType<CreateStoreRequest> }
   > = (props) => {
     const { data } = props ?? {};
 
-    return createRestaurant(data, requestOptions);
+    return createStore(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type CreateRestaurantMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createRestaurant>>
+export type CreateStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createStore>>
 >;
-export type CreateRestaurantMutationBody = BodyType<CreateRestaurantRequest>;
-export type CreateRestaurantMutationError = ErrorType<unknown>;
+export type CreateStoreMutationBody = BodyType<CreateStoreRequest>;
+export type CreateStoreMutationError = ErrorType<unknown>;
 
 /**
- * @summary Create a restaurant
+ * @summary Create a store
  */
-export const useCreateRestaurant = <
+export const useCreateStore = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createRestaurant>>,
+    Awaited<ReturnType<typeof createStore>>,
     TError,
-    { data: BodyType<CreateRestaurantRequest> },
+    { data: BodyType<CreateStoreRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof createRestaurant>>,
+  Awaited<ReturnType<typeof createStore>>,
   TError,
-  { data: BodyType<CreateRestaurantRequest> },
+  { data: BodyType<CreateStoreRequest> },
   TContext
 > => {
-  return useMutation(getCreateRestaurantMutationOptions(options));
+  return useMutation(getCreateStoreMutationOptions(options));
 };
 
 /**
- * @summary Get a restaurant
+ * @summary Get a store
  */
-export const getGetRestaurantUrl = (id: number) => {
-  return `/api/restaurants/${id}`;
+export const getGetStoreUrl = (id: number) => {
+  return `/api/stores/${id}`;
 };
 
-export const getRestaurant = async (
+export const getStore = async (
   id: number,
   options?: RequestInit,
-): Promise<Restaurant> => {
-  return customFetch<Restaurant>(getGetRestaurantUrl(id), {
+): Promise<Store> => {
+  return customFetch<Store>(getGetStoreUrl(id), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetRestaurantQueryKey = (id: number) => {
-  return [`/api/restaurants/${id}`] as const;
+export const getGetStoreQueryKey = (id: number) => {
+  return [`/api/stores/${id}`] as const;
 };
 
-export const getGetRestaurantQueryOptions = <
-  TData = Awaited<ReturnType<typeof getRestaurant>>,
+export const getGetStoreQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStore>>,
   TError = ErrorType<ErrorResponse>,
 >(
   id: number,
   options?: {
     query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getRestaurant>>,
+      Awaited<ReturnType<typeof getStore>>,
       TError,
       TData
     >;
@@ -570,48 +570,46 @@ export const getGetRestaurantQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetRestaurantQueryKey(id);
+  const queryKey = queryOptions?.queryKey ?? getGetStoreQueryKey(id);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRestaurant>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStore>>> = ({
     signal,
-  }) => getRestaurant(id, { signal, ...requestOptions });
+  }) => getStore(id, { signal, ...requestOptions });
 
   return {
     queryKey,
     queryFn,
     enabled: !!id,
     ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getRestaurant>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
+  } as UseQueryOptions<Awaited<ReturnType<typeof getStore>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
 };
 
-export type GetRestaurantQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getRestaurant>>
+export type GetStoreQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStore>>
 >;
-export type GetRestaurantQueryError = ErrorType<ErrorResponse>;
+export type GetStoreQueryError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Get a restaurant
+ * @summary Get a store
  */
 
-export function useGetRestaurant<
-  TData = Awaited<ReturnType<typeof getRestaurant>>,
+export function useGetStore<
+  TData = Awaited<ReturnType<typeof getStore>>,
   TError = ErrorType<ErrorResponse>,
 >(
   id: number,
   options?: {
     query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getRestaurant>>,
+      Awaited<ReturnType<typeof getStore>>,
       TError,
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetRestaurantQueryOptions(id, options);
+  const queryOptions = getGetStoreQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -621,34 +619,34 @@ export function useGetRestaurant<
 }
 
 /**
- * @summary Get menu for a restaurant
+ * @summary Get menu for a store
  */
-export const getGetRestaurantMenuUrl = (id: number) => {
-  return `/api/restaurants/${id}/menu`;
+export const getGetStoreMenuUrl = (id: number) => {
+  return `/api/stores/${id}/menu`;
 };
 
-export const getRestaurantMenu = async (
+export const getStoreMenu = async (
   id: number,
   options?: RequestInit,
 ): Promise<MenuItem[]> => {
-  return customFetch<MenuItem[]>(getGetRestaurantMenuUrl(id), {
+  return customFetch<MenuItem[]>(getGetStoreMenuUrl(id), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetRestaurantMenuQueryKey = (id: number) => {
-  return [`/api/restaurants/${id}/menu`] as const;
+export const getGetStoreMenuQueryKey = (id: number) => {
+  return [`/api/stores/${id}/menu`] as const;
 };
 
-export const getGetRestaurantMenuQueryOptions = <
-  TData = Awaited<ReturnType<typeof getRestaurantMenu>>,
+export const getGetStoreMenuQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStoreMenu>>,
   TError = ErrorType<unknown>,
 >(
   id: number,
   options?: {
     query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getRestaurantMenu>>,
+      Awaited<ReturnType<typeof getStoreMenu>>,
       TError,
       TData
     >;
@@ -657,11 +655,11 @@ export const getGetRestaurantMenuQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetRestaurantMenuQueryKey(id);
+  const queryKey = queryOptions?.queryKey ?? getGetStoreMenuQueryKey(id);
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getRestaurantMenu>>
-  > = ({ signal }) => getRestaurantMenu(id, { signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStoreMenu>>> = ({
+    signal,
+  }) => getStoreMenu(id, { signal, ...requestOptions });
 
   return {
     queryKey,
@@ -669,36 +667,36 @@ export const getGetRestaurantMenuQueryOptions = <
     enabled: !!id,
     ...queryOptions,
   } as UseQueryOptions<
-    Awaited<ReturnType<typeof getRestaurantMenu>>,
+    Awaited<ReturnType<typeof getStoreMenu>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type GetRestaurantMenuQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getRestaurantMenu>>
+export type GetStoreMenuQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStoreMenu>>
 >;
-export type GetRestaurantMenuQueryError = ErrorType<unknown>;
+export type GetStoreMenuQueryError = ErrorType<unknown>;
 
 /**
- * @summary Get menu for a restaurant
+ * @summary Get menu for a store
  */
 
-export function useGetRestaurantMenu<
-  TData = Awaited<ReturnType<typeof getRestaurantMenu>>,
+export function useGetStoreMenu<
+  TData = Awaited<ReturnType<typeof getStoreMenu>>,
   TError = ErrorType<unknown>,
 >(
   id: number,
   options?: {
     query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getRestaurantMenu>>,
+      Awaited<ReturnType<typeof getStoreMenu>>,
       TError,
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetRestaurantMenuQueryOptions(id, options);
+  const queryOptions = getGetStoreMenuQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -711,7 +709,7 @@ export function useGetRestaurantMenu<
  * @summary Add a menu item
  */
 export const getCreateMenuItemUrl = (id: number) => {
-  return `/api/restaurants/${id}/menu`;
+  return `/api/stores/${id}/menu`;
 };
 
 export const createMenuItem = async (

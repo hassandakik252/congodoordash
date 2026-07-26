@@ -2,7 +2,7 @@ import { pgTable, serial, text, timestamp, pgEnum, jsonb, boolean } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const userRoleEnum = pgEnum("user_role", ["customer", "restaurant_owner", "driver", "admin"]);
+export const userRoleEnum = pgEnum("user_role", ["customer", "store_owner", "driver", "admin"]);
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),

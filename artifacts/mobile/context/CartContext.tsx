@@ -20,10 +20,10 @@ function makeLineId(menuItemId: number, modifiers?: CartModifier[]): string {
 
 interface CartContextValue {
   items: CartItem[];
-  restaurantId: number | null;
-  restaurantName: string;
+  storeId: number | null;
+  storeName: string;
   deliveryFee: number;
-  addItem: (item: CartItem, restaurantId: number, restaurantName: string, deliveryFee: number) => void;
+  addItem: (item: CartItem, storeId: number, storeName: string, deliveryFee: number) => void;
   removeItem: (lineId: string) => void;
   updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
@@ -36,18 +36,18 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [restaurantId, setRestaurantId] = useState<number | null>(null);
-  const [restaurantName, setRestaurantName] = useState("");
+  const [storeId, setRestaurantId] = useState<number | null>(null);
+  const [storeName, setRestaurantName] = useState("");
   const [deliveryFee, setDeliveryFee] = useState(0);
 
   const addItem = (item: CartItem, rId: number, rName: string, rDeliveryFee: number) => {
     const lineId = makeLineId(item.menuItemId, item.modifiers);
     const withId = { ...item, lineId };
-    if (restaurantId && restaurantId !== rId) {
+    if (storeId && storeId !== rId) {
       // Different restaurant — ask before clearing existing cart
       Alert.alert(
         "Vider le panier ?",
-        `Votre panier contient des articles de ${restaurantName}. Voulez-vous le vider pour commander chez ${rName} ?`,
+        `Votre panier contient des articles de ${storeName}. Voulez-vous le vider pour commander chez ${rName} ?`,
         [
           { text: "Annuler", style: "cancel" },
           {
@@ -101,7 +101,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider value={{
-      items, restaurantId, restaurantName, deliveryFee,
+      items, storeId, storeName, deliveryFee,
       addItem, removeItem, updateQuantity, clearCart,
       subtotal, total, itemCount
     }}>

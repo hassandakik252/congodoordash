@@ -6,13 +6,18 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateRestaurantRequest {
+export interface Store {
+  id: number;
+  ownerId: number;
   name: string;
   description?: string;
   category: string;
   address: string;
   phone: string;
   imageUrl?: string;
+  rating: number;
   deliveryTimeMin: number;
   deliveryFee: number;
+  isOpen: boolean;
+  createdAt: Date;
 }

@@ -282,7 +282,7 @@ export default function DriverDashboard() {
               {/* Header */}
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.restaurantName}>{item.restaurantName}</Text>
+                  <Text style={styles.storeName}>{item.storeName}</Text>
                   <Text style={styles.orderDate}>{formatDate(item.createdAt)}</Text>
                 </View>
                 <View style={[styles.statusBadge, { backgroundColor: getOrderStatusColor(item.status) + "22" }]}>
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", marginBottom: 8, gap: 8 },
-  restaurantName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  storeName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
   orderDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   statusText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },

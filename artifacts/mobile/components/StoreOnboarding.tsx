@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useLang } from "@/context/LanguageContext";
-import { restaurantApi, kycApi } from "@/services/api";
+import { storeApi, kycApi } from "@/services/api";
 import { pickAndUploadImage } from "@/utils/imageUpload";
 import { VERTICALS } from "@/utils/format";
 
@@ -30,7 +30,7 @@ export default function StoreOnboarding({ topPad }: { topPad: number }) {
     if (!valid) return;
     setCreating(true);
     try {
-      await restaurantApi.create({
+      await storeApi.create({
         name: name.trim(), vertical, category: category.trim(), address: address.trim(),
         phone: phone.trim(), deliveryFee: Number(deliveryFee), deliveryTimeMin: Number(deliveryTimeMin),
       });

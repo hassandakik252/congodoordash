@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, restaurantsTable, ordersTable, reviewsTable, kycDocumentsTable, settingsTable } from "@workspace/db/schema";
+import { usersTable, storesTable, ordersTable, reviewsTable, kycDocumentsTable, settingsTable } from "@workspace/db/schema";
 import { avg, count, eq, ilike, or, desc, sql, and } from "drizzle-orm";
 import { requireAuth, requireRole, AuthRequest } from "../middlewares/auth";
 import { z } from "zod";
@@ -17,7 +17,7 @@ router.get("/stats", async (_req, res) => {
     const [activeOrders] = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(sql`${ordersTable.status} NOT IN ('delivered', 'cancelled')`);
     const [revenue] = await db.select({ total: sql<number>`COALESCE(SUM(${ordersTable.total}), 0)` }).from(ordersTable).where(eq(ordersTable.status, "delivered"));
     const [commission] = await db.select({ total: sql<number>`COALESCE(SUM(${ordersTable.commission}), 0)` }).from(ordersTable).where(eq(ordersTable.status, "delivered"));
-    const [totalRestaurants] = await db.select({ count: sql<number>`count(*)` }).from(restaurantsTable);
+    const [totalRestaurants] = await db.select({ count: sql<number>`count(*)` }).from(storesTable);
     const [totalCustomers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "customer"));
     const [totalDrivers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "driver"));
     const [pendingDrivers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(sql`${usersTable.role} = 'driver' AND ${usersTable.driverStatus} = 'pending'`);
@@ -62,13 +62,13 @@ router.get("/orders", async (req, res) => {
         createdAt: ordersTable.createdAt,
         customerId: ordersTable.customerId,
         driverId: ordersTable.driverId,
-        restaurantId: ordersTable.restaurantId,
+        storeId: ordersTable.storeId,
         customerName: usersTable.name,
-        restaurantName: restaurantsTable.name,
+        storeName: storesTable.name,
       })
       .from(ordersTable)
       .leftJoin(usersTable, eq(ordersTable.customerId, usersTable.id))
-      .leftJoin(restaurantsTable, eq(ordersTable.restaurantId, restaurantsTable.id))
+      .leftJoin(storesTable, eq(ordersTable.storeId, storesTable.id))
       .orderBy(desc(ordersTable.createdAt))
       .$dynamic();
 
@@ -89,30 +89,30 @@ router.get("/restaurants", async (req, res) => {
     const { search } = req.query as { search?: string };
     let query = db
       .select({
-        id: restaurantsTable.id,
-        name: restaurantsTable.name,
-        category: restaurantsTable.category,
-        address: restaurantsTable.address,
-        phone: restaurantsTable.phone,
-        rating: restaurantsTable.rating,
-        deliveryTimeMin: restaurantsTable.deliveryTimeMin,
-        deliveryFee: restaurantsTable.deliveryFee,
-        isOpen: restaurantsTable.isOpen,
-        createdAt: restaurantsTable.createdAt,
+        id: storesTable.id,
+        name: storesTable.name,
+        category: storesTable.category,
+        address: storesTable.address,
+        phone: storesTable.phone,
+        rating: storesTable.rating,
+        deliveryTimeMin: storesTable.deliveryTimeMin,
+        deliveryFee: storesTable.deliveryFee,
+        isOpen: storesTable.isOpen,
+        createdAt: storesTable.createdAt,
         ownerName: usersTable.name,
         ownerEmail: usersTable.email,
       })
-      .from(restaurantsTable)
-      .leftJoin(usersTable, eq(restaurantsTable.ownerId, usersTable.id))
-      .orderBy(desc(restaurantsTable.createdAt))
+      .from(storesTable)
+      .leftJoin(usersTable, eq(storesTable.ownerId, usersTable.id))
+      .orderBy(desc(storesTable.createdAt))
       .$dynamic();
 
     if (search) {
       query = query.where(
         or(
-          ilike(restaurantsTable.name, `%${search}%`),
-          ilike(restaurantsTable.category, `%${search}%`),
-          ilike(restaurantsTable.address, `%${search}%`)
+          ilike(storesTable.name, `%${search}%`),
+          ilike(storesTable.category, `%${search}%`),
+          ilike(storesTable.address, `%${search}%`)
         )
       );
     }
@@ -128,12 +128,12 @@ router.get("/restaurants", async (req, res) => {
 router.patch("/restaurants/:id/toggle", async (req, res) => {
   try {
     const id = parseInt(String(req.params.id));
-    const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, id)).limit(1);
+    const [restaurant] = await db.select().from(storesTable).where(eq(storesTable.id, id)).limit(1);
     if (!restaurant) { res.status(404).json({ error: "Restaurant not found" }); return; }
     const [updated] = await db
-      .update(restaurantsTable)
+      .update(storesTable)
       .set({ isOpen: !restaurant.isOpen })
-      .where(eq(restaurantsTable.id, id))
+      .where(eq(storesTable.id, id))
       .returning();
     res.json(updated);
   } catch (err) {
@@ -306,11 +306,11 @@ router.get("/payments", async (req, res) => {
         createdAt: ordersTable.createdAt,
         customerId: ordersTable.customerId,
         customerName: usersTable.name,
-        restaurantName: restaurantsTable.name,
+        storeName: storesTable.name,
       })
       .from(ordersTable)
       .leftJoin(usersTable, eq(ordersTable.customerId, usersTable.id))
-      .leftJoin(restaurantsTable, eq(ordersTable.restaurantId, restaurantsTable.id))
+      .leftJoin(storesTable, eq(ordersTable.storeId, storesTable.id))
       .where(
         paymentStatus && paymentStatus !== "all"
           ? and(eq(ordersTable.paymentMethod, "mobile_money"), sql`${ordersTable.paymentStatus} = ${paymentStatus}`)
@@ -428,14 +428,14 @@ router.get("/analytics", async (req, res) => {
     // Top 5 restaurants by order count
     const topRestaurants = await db
       .select({
-        restaurantId: ordersTable.restaurantId,
-        restaurantName: ordersTable.restaurantName,
+        storeId: ordersTable.storeId,
+        storeName: ordersTable.storeName,
         orderCount: sql<number>`COUNT(*)::int`,
         revenue: sql<number>`COALESCE(SUM(${ordersTable.total}), 0)::float`,
       })
       .from(ordersTable)
       .where(sql`${ordersTable.createdAt} >= ${fromDate} AND ${ordersTable.createdAt} <= ${toDate}`)
-      .groupBy(ordersTable.restaurantId, ordersTable.restaurantName)
+      .groupBy(ordersTable.storeId, ordersTable.storeName)
       .orderBy(desc(sql`COUNT(*)`))
       .limit(5);
 
@@ -555,7 +555,7 @@ router.patch("/kyc/:id", async (req: AuthRequest, res) => {
 router.get("/merchants", async (req, res) => {
   try {
     const { status } = req.query as { status?: string };
-    const conds = [eq(usersTable.role, "restaurant_owner")];
+    const conds = [eq(usersTable.role, "store_owner")];
     if (status && ["pending", "approved", "rejected"].includes(status)) {
       conds.push(eq(usersTable.merchantStatus, status));
     }
@@ -579,7 +579,7 @@ function makeMerchantDecision(action: "approved" | "rejected") {
       if (isNaN(id)) { res.status(400).json({ error: "bad_request" }); return; }
       const [m] = await db.select({ id: usersTable.id, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
       if (!m) { res.status(404).json({ error: "not_found" }); return; }
-      if (m.role !== "restaurant_owner") { res.status(400).json({ error: "not_a_merchant" }); return; }
+      if (m.role !== "store_owner") { res.status(400).json({ error: "not_a_merchant" }); return; }
 
       const [updated] = await db.update(usersTable)
         .set({ merchantStatus: action, isActive: true })

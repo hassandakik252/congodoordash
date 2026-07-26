@@ -174,7 +174,7 @@ const translations = {
     readyForDriver: "Ready for Driver",
     totalRevenue: "Revenue",
     // Restaurant profile
-    restaurantProfile: "My Restaurant",
+    storeProfile: "My Store",
     restaurantSettings: "Restaurant Settings",
     restaurantInfo: "Restaurant Info",
     restaurantStatus: "Status",
@@ -493,7 +493,7 @@ const translations = {
     readyForDriver: "Prêt pour le livreur",
     totalRevenue: "Revenu",
     // Restaurant profile
-    restaurantProfile: "Mon Restaurant",
+    storeProfile: "Ma Boutique",
     restaurantSettings: "Paramètres du restaurant",
     restaurantInfo: "Informations",
     restaurantStatus: "Statut",

@@ -66,7 +66,7 @@ export default function ProfileScreen() {
 
   const getRoleLabel = () => {
     if (user?.role === "customer") return t("customer");
-    if (user?.role === "restaurant_owner") return t("restaurantOwner");
+    if (user?.role === "store_owner") return t("restaurantOwner");
     if (user?.role === "driver") return t("driver");
     return user?.role || "";
   };
@@ -258,16 +258,16 @@ export default function ProfileScreen() {
         {/* Legal & Support */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("legalSupport")}</Text>
-          {[
+          {([
             { label: t("privacyPolicy"), icon: "shield-checkmark-outline", href: "/legal/privacy" },
             { label: t("supportContact"), icon: "help-circle-outline", href: "/legal/support" },
-          ].map(({ label, icon, href }) => (
+          ] as const).map(({ label, icon, href }) => (
             <Pressable
               key={href}
               style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
               onPress={() => {
                 if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push(href as any);
+                router.push(href);
               }}
             >
               <Ionicons name={icon as any} size={18} color={Colors.textMuted} />

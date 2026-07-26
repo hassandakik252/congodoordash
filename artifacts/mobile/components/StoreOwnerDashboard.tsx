@@ -18,7 +18,7 @@ import {
   NotificationEvent,
 } from "@/services/pushNotifications";
 
-export default function RestaurantOwnerDashboard() {
+export default function StoreOwnerDashboard() {
   const insets = useSafeAreaInsets();
   const { t } = useLang();
   const { user } = useAuth();

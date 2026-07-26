@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
-import restaurantsRouter from "./restaurants";
+import storesRouter from "./stores";
 import ordersRouter from "./orders";
 import usersRouter from "./users";
 import notificationsRouter from "./notifications";
@@ -21,8 +21,8 @@ const router: IRouter = Router();
 router.use(healthRouter);
 router.use("/auth", authRouter);
 // Canonical (vertical-neutral) mount; "/restaurants" kept as a backward-compat alias
-router.use("/stores", restaurantsRouter);
-router.use("/restaurants", restaurantsRouter);
+router.use("/stores", storesRouter);
+router.use("/restaurants", storesRouter);
 router.use("/orders", ordersRouter);
 router.use("/orders", messagesRouter);
 router.use("/driver/available-orders", (req, _res, next) => {

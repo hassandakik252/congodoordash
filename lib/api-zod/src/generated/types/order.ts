@@ -14,8 +14,8 @@ export interface Order {
   id: number;
   customerId: number;
   driverId?: number;
-  restaurantId: number;
-  restaurantName: string;
+  storeId: number;
+  storeName: string;
   status: OrderStatus;
   paymentMethod: OrderPaymentMethod;
   paymentStatus: OrderPaymentStatus;

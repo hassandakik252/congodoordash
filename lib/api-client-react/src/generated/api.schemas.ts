@@ -19,7 +19,7 @@ export type RegisterRequestRole =
 
 export const RegisterRequestRole = {
   customer: "customer",
-  restaurant_owner: "restaurant_owner",
+  store_owner: "store_owner",
   driver: "driver",
 } as const;
 
@@ -41,7 +41,7 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const UserRole = {
   customer: "customer",
-  restaurant_owner: "restaurant_owner",
+  store_owner: "store_owner",
   driver: "driver",
 } as const;
 
@@ -66,7 +66,7 @@ export interface UpdateProfileRequest {
   address?: string;
 }
 
-export interface Restaurant {
+export interface Store {
   id: number;
   ownerId: number;
   name: string;
@@ -82,7 +82,7 @@ export interface Restaurant {
   createdAt: string;
 }
 
-export interface CreateRestaurantRequest {
+export interface CreateStoreRequest {
   name: string;
   description?: string;
   category: string;
@@ -95,7 +95,7 @@ export interface CreateRestaurantRequest {
 
 export interface MenuItem {
   id: number;
-  restaurantId: number;
+  storeId: number;
   name: string;
   description?: string;
   price: number;
@@ -151,8 +151,8 @@ export interface Order {
   id: number;
   customerId: number;
   driverId?: number;
-  restaurantId: number;
-  restaurantName: string;
+  storeId: number;
+  storeName: string;
   status: OrderStatus;
   paymentMethod: OrderPaymentMethod;
   paymentStatus: OrderPaymentStatus;
@@ -180,7 +180,7 @@ export const CreateOrderRequestPaymentMethod = {
 } as const;
 
 export interface CreateOrderRequest {
-  restaurantId: number;
+  storeId: number;
   items: CreateOrderRequestItemsItem[];
   deliveryAddress: string;
   paymentMethod: CreateOrderRequestPaymentMethod;
@@ -204,7 +204,7 @@ export interface UpdateOrderStatusRequest {
   status: UpdateOrderStatusRequestStatus;
 }
 
-export type ListRestaurantsParams = {
+export type ListStoresParams = {
   category?: string;
   search?: string;
 };

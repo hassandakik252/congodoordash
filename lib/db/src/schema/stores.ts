@@ -17,11 +17,11 @@ export const verticalEnum = pgEnum("vertical", [
 ]);
 
 /**
- * Stores / merchants for all verticals (was "restaurants"). The physical table
- * is still named "restaurants" to avoid a data migration; the code refers to it
- * as `storesTable`. `restaurantsTable` is kept as a backward-compatible alias.
+ * Stores / merchants for all verticals. A store has a `vertical` (restaurant,
+ * grocery, pharmacy, retail, drinks) that drives the customer UI and the order
+ * lifecycle. Owned by a user with the `store_owner` role.
  */
-export const storesTable = pgTable("restaurants", {
+export const storesTable = pgTable("stores", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id").notNull().references(() => usersTable.id),
   vertical: verticalEnum("vertical").notNull().default("restaurant"),
@@ -45,9 +45,3 @@ export const storesTable = pgTable("restaurants", {
 export const insertStoreSchema = createInsertSchema(storesTable).omit({ id: true, createdAt: true, rating: true });
 export type InsertStore = z.infer<typeof insertStoreSchema>;
 export type Store = typeof storesTable.$inferSelect;
-
-// ── Backward-compatible aliases (pre-generalization names) ───────────────────
-export const restaurantsTable = storesTable;
-export const insertRestaurantSchema = insertStoreSchema;
-export type InsertRestaurant = InsertStore;
-export type Restaurant = Store;

@@ -24,7 +24,7 @@ export const RegisterBody = zod.object({
   password: zod.string().min(registerBodyPasswordMin),
   name: zod.string(),
   phone: zod.string(),
-  role: zod.enum(["customer", "restaurant_owner", "driver"]),
+  role: zod.enum(["customer", "store_owner", "driver"]),
 });
 
 /**
@@ -42,7 +42,7 @@ export const LoginResponse = zod.object({
     email: zod.string(),
     name: zod.string(),
     phone: zod.string(),
-    role: zod.enum(["customer", "restaurant_owner", "driver"]),
+    role: zod.enum(["customer", "store_owner", "driver"]),
     address: zod.string().optional(),
     createdAt: zod.date(),
   }),
@@ -56,20 +56,20 @@ export const GetMeResponse = zod.object({
   email: zod.string(),
   name: zod.string(),
   phone: zod.string(),
-  role: zod.enum(["customer", "restaurant_owner", "driver"]),
+  role: zod.enum(["customer", "store_owner", "driver"]),
   address: zod.string().optional(),
   createdAt: zod.date(),
 });
 
 /**
- * @summary List all restaurants
+ * @summary List all stores
  */
-export const ListRestaurantsQueryParams = zod.object({
+export const ListStoresQueryParams = zod.object({
   category: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
 });
 
-export const ListRestaurantsResponseItem = zod.object({
+export const ListStoresResponseItem = zod.object({
   id: zod.number(),
   ownerId: zod.number(),
   name: zod.string(),
@@ -84,12 +84,12 @@ export const ListRestaurantsResponseItem = zod.object({
   isOpen: zod.boolean(),
   createdAt: zod.date(),
 });
-export const ListRestaurantsResponse = zod.array(ListRestaurantsResponseItem);
+export const ListStoresResponse = zod.array(ListStoresResponseItem);
 
 /**
- * @summary Create a restaurant
+ * @summary Create a store
  */
-export const CreateRestaurantBody = zod.object({
+export const CreateStoreBody = zod.object({
   name: zod.string(),
   description: zod.string().optional(),
   category: zod.string(),
@@ -101,13 +101,13 @@ export const CreateRestaurantBody = zod.object({
 });
 
 /**
- * @summary Get a restaurant
+ * @summary Get a store
  */
-export const GetRestaurantParams = zod.object({
+export const GetStoreParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetRestaurantResponse = zod.object({
+export const GetStoreResponse = zod.object({
   id: zod.number(),
   ownerId: zod.number(),
   name: zod.string(),
@@ -124,15 +124,15 @@ export const GetRestaurantResponse = zod.object({
 });
 
 /**
- * @summary Get menu for a restaurant
+ * @summary Get menu for a store
  */
-export const GetRestaurantMenuParams = zod.object({
+export const GetStoreMenuParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetRestaurantMenuResponseItem = zod.object({
+export const GetStoreMenuResponseItem = zod.object({
   id: zod.number(),
-  restaurantId: zod.number(),
+  storeId: zod.number(),
   name: zod.string(),
   description: zod.string().optional(),
   price: zod.number(),
@@ -140,9 +140,7 @@ export const GetRestaurantMenuResponseItem = zod.object({
   imageUrl: zod.string().optional(),
   isAvailable: zod.boolean(),
 });
-export const GetRestaurantMenuResponse = zod.array(
-  GetRestaurantMenuResponseItem,
-);
+export const GetStoreMenuResponse = zod.array(GetStoreMenuResponseItem);
 
 /**
  * @summary Add a menu item
@@ -166,8 +164,8 @@ export const ListOrdersResponseItem = zod.object({
   id: zod.number(),
   customerId: zod.number(),
   driverId: zod.number().optional(),
-  restaurantId: zod.number(),
-  restaurantName: zod.string(),
+  storeId: zod.number(),
+  storeName: zod.string(),
   status: zod.enum([
     "pending",
     "confirmed",
@@ -201,7 +199,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem);
  * @summary Place a new order
  */
 export const CreateOrderBody = zod.object({
-  restaurantId: zod.number(),
+  storeId: zod.number(),
   items: zod.array(
     zod.object({
       menuItemId: zod.number(),
@@ -224,8 +222,8 @@ export const GetOrderResponse = zod.object({
   id: zod.number(),
   customerId: zod.number(),
   driverId: zod.number().optional(),
-  restaurantId: zod.number(),
-  restaurantName: zod.string(),
+  storeId: zod.number(),
+  storeName: zod.string(),
   status: zod.enum([
     "pending",
     "confirmed",
@@ -277,8 +275,8 @@ export const UpdateOrderStatusResponse = zod.object({
   id: zod.number(),
   customerId: zod.number(),
   driverId: zod.number().optional(),
-  restaurantId: zod.number(),
-  restaurantName: zod.string(),
+  storeId: zod.number(),
+  storeName: zod.string(),
   status: zod.enum([
     "pending",
     "confirmed",
@@ -314,8 +312,8 @@ export const GetAvailableOrdersResponseItem = zod.object({
   id: zod.number(),
   customerId: zod.number(),
   driverId: zod.number().optional(),
-  restaurantId: zod.number(),
-  restaurantName: zod.string(),
+  storeId: zod.number(),
+  storeName: zod.string(),
   status: zod.enum([
     "pending",
     "confirmed",
@@ -354,8 +352,8 @@ export const GetDriverOrdersResponseItem = zod.object({
   id: zod.number(),
   customerId: zod.number(),
   driverId: zod.number().optional(),
-  restaurantId: zod.number(),
-  restaurantName: zod.string(),
+  storeId: zod.number(),
+  storeName: zod.string(),
   status: zod.enum([
     "pending",
     "confirmed",
@@ -399,7 +397,7 @@ export const UpdateProfileResponse = zod.object({
   email: zod.string(),
   name: zod.string(),
   phone: zod.string(),
-  role: zod.enum(["customer", "restaurant_owner", "driver"]),
+  role: zod.enum(["customer", "store_owner", "driver"]),
   address: zod.string().optional(),
   createdAt: zod.date(),
 });

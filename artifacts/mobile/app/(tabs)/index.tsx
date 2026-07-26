@@ -9,7 +9,7 @@ import { useLang } from "@/context/LanguageContext";
 import { authApi } from "@/services/api";
 import CustomerHome from "@/components/CustomerHome";
 import DriverDashboard from "@/components/DriverDashboard";
-import RestaurantOwnerDashboard from "@/components/RestaurantOwnerDashboard";
+import StoreOwnerDashboard from "@/components/StoreOwnerDashboard";
 import AdminDashboard from "@/components/AdminDashboard";
 
 function DriverPendingScreen() {
@@ -117,7 +117,7 @@ export default function HomeScreen() {
     }
     return <DriverDashboard />;
   }
-  if (user?.role === "restaurant_owner") return <RestaurantOwnerDashboard />;
+  if (user?.role === "store_owner") return <StoreOwnerDashboard />;
   return <CustomerHome />;
 }
 

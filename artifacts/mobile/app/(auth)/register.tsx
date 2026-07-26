@@ -12,12 +12,12 @@ import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { authApi } from "@/services/api";
 
-type Role = "customer" | "restaurant_owner" | "driver";
+type Role = "customer" | "store_owner" | "driver";
 type VehicleType = "motorcycle" | "bicycle" | "car" | "foot";
 
 const ROLES: { value: Role; icon: string }[] = [
   { value: "customer", icon: "person-outline" },
-  { value: "restaurant_owner", icon: "restaurant-outline" },
+  { value: "store_owner", icon: "restaurant-outline" },
   { value: "driver", icon: "bicycle-outline" },
 ];
 
@@ -61,7 +61,7 @@ export default function RegisterScreen() {
 
   const getRoleLabel = (r: Role) => {
     if (r === "customer") return t("customer");
-    if (r === "restaurant_owner") return t("restaurantOwner");
+    if (r === "store_owner") return t("restaurantOwner");
     return t("driver");
   };
 
@@ -170,7 +170,7 @@ export default function RegisterScreen() {
             />
             <Text style={styles.termsText}>
               {language === "fr" ? "J'accepte les " : "I accept the "}
-              <Text style={styles.termsLink} onPress={() => router.push("/legal/terms" as any)}>
+              <Text style={styles.termsLink} onPress={() => router.push("/legal/terms")}>
                 {language === "fr" ? "Conditions et la Politique de confidentialité" : "Terms & Privacy Policy"}
               </Text>
             </Text>

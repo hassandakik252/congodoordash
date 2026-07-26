@@ -88,7 +88,7 @@ router.get("/", requireAuth, requireRole("driver"), async (req: AuthRequest, res
     ...summary,
     deliveries: deliveries.map((o: any) => ({
       id: o.id,
-      restaurantName: o.restaurantName,
+      storeName: o.storeName,
       deliveryAddress: o.deliveryAddress,
       paymentMethod: o.paymentMethod,
       total: o.total,
@@ -238,7 +238,7 @@ router.get("/admin/drivers/:driverId", requireAuth, requireRole("admin"), async 
     mismatch: summary.totalCashCollected > 0 && pendingBalance !== 0,
     deliveries: deliveries.map((o: any) => ({
       id: o.id,
-      restaurantName: o.restaurantName,
+      storeName: o.storeName,
       deliveryAddress: o.deliveryAddress,
       paymentMethod: o.paymentMethod,
       total: o.total,

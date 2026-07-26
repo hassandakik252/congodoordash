@@ -147,7 +147,7 @@ export default function OrderDetailScreen() {
   const isActive = order && !["delivered", "cancelled"].includes(order.status);
 
   // Show customer phone only to restaurant and driver
-  const canSeePhone = user?.role === "restaurant_owner" || user?.role === "driver";
+  const canSeePhone = user?.role === "store_owner" || user?.role === "driver";
 
   // Payment status colour
   const paymentStatusColor = usePaymentStatusColor(order?.paymentStatus ?? "pending");
@@ -244,7 +244,7 @@ export default function OrderDetailScreen() {
     !!order &&
     order.status !== "delivered" &&
     order.status !== "cancelled" &&
-    (user?.role === "restaurant_owner" || (user?.role === "driver" && order?.driverId === user?.id));
+    (user?.role === "store_owner" || (user?.role === "driver" && order?.driverId === user?.id));
 
   const pickMutation = useMutation({
     mutationFn: (items: Array<{ menuItemId: number; lineStatus: string; substituteName?: string; finalPrice?: number }>) =>
@@ -296,7 +296,7 @@ export default function OrderDetailScreen() {
         </Pressable>
         <Text style={styles.title}>{t("orderDetails")}</Text>
         {order && isActive ? (
-          <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${orderId}` as any)}>
+          <Pressable style={styles.chatBtn} onPress={() => router.push({ pathname: "/chat/[orderId]", params: { orderId } })}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.primary} />
           </Pressable>
         ) : <View style={{ width: 60 }} />}
@@ -363,7 +363,7 @@ export default function OrderDetailScreen() {
               <View style={styles.restaurantIcon}>
                 <Ionicons name="restaurant" size={22} color={Colors.primary} />
               </View>
-              <Text style={styles.restaurantName}>{order.restaurantName}</Text>
+              <Text style={styles.storeName}>{order.storeName}</Text>
             </View>
           </View>
 
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 14,
     backgroundColor: "rgba(255,69,0,0.12)", alignItems: "center", justifyContent: "center",
   },
-  restaurantName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
+  storeName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.textPrimary },
 
   sectionTitle: {
     fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textMuted,

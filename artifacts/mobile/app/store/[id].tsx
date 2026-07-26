@@ -11,43 +11,43 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
-import { restaurantApi } from "@/services/api";
+import { storeApi } from "@/services/api";
 import { formatCurrency, unitSuffix, VERTICALS } from "@/utils/format";
 
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { t, language } = useLang();
-  const { addItem, items, itemCount, total, restaurantId } = useCart();
+  const { addItem, items, itemCount, total, storeId } = useCart();
   const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState("");
 
   const numericId = id ? Number(id) : NaN;
 
-  const restaurantQuery = useQuery({
-    queryKey: ["restaurant", numericId],
-    queryFn: () => restaurantApi.get(numericId),
+  const storeQuery = useQuery({
+    queryKey: ["store", numericId],
+    queryFn: () => storeApi.get(numericId),
     enabled: !isNaN(numericId),
   });
 
   const menuQuery = useQuery({
     queryKey: ["menu", numericId],
-    queryFn: () => restaurantApi.getMenu(numericId),
+    queryFn: () => storeApi.getMenu(numericId),
     enabled: !isNaN(numericId),
   });
 
-  const restaurant = restaurantQuery.data;
+  const store = storeQuery.data;
   const menuItems = menuQuery.data || [];
 
   // Non-restaurant stores (grocery/retail/pharmacy) get an in-store search box.
-  const isRestaurant = !restaurant?.vertical || restaurant.vertical === "restaurant";
-  const storeIcon = (VERTICALS.find(v => v.id === (restaurant?.vertical ?? "restaurant"))?.icon ?? "storefront") as any;
+  const isRestaurant = !store?.vertical || store.vertical === "restaurant";
+  const storeIcon = (VERTICALS.find(v => v.id === (store?.vertical ?? "restaurant"))?.icon ?? "storefront") as any;
   const productIcon = isRestaurant ? "fast-food" : "cube";
 
   // Drinks vertical: one-time age confirmation on entering the store.
   const ageAsked = useRef(false);
   useEffect(() => {
-    if (restaurant?.vertical === "drinks" && !ageAsked.current) {
+    if (store?.vertical === "drinks" && !ageAsked.current) {
       ageAsked.current = true;
       Alert.alert(
         language === "fr" ? "Vérification de l'âge" : "Age verification",
@@ -60,7 +60,7 @@ export default function RestaurantDetailScreen() {
         ],
       );
     }
-  }, [restaurant?.vertical, language]);
+  }, [store?.vertical, language]);
 
   const isOutOfStock = (item: any) =>
     item.stockQuantity != null && item.stockQuantity <= 0;
@@ -88,12 +88,12 @@ export default function RestaurantDetailScreen() {
   };
 
   const addToCart = (item: any, modifiers?: Array<{ groupName: string; label: string; price: number }>) => {
-    if (!restaurant) return;
+    if (!store) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const modTotal = (modifiers ?? []).reduce((s, m) => s + m.price, 0);
     addItem(
       { menuItemId: item.id, name: item.name, price: item.price + modTotal, quantity: 1, imageUrl: item.imageUrl, modifiers },
-      restaurant.id, restaurant.name, restaurant.deliveryFee,
+      store.id, store.name, store.deliveryFee,
     );
     flashAdded(item.id);
   };
@@ -147,7 +147,7 @@ export default function RestaurantDetailScreen() {
     setModSel({});
   };
 
-  const cartFromHere = restaurantId === numericId;
+  const cartFromHere = storeId === numericId;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
@@ -164,9 +164,9 @@ export default function RestaurantDetailScreen() {
         )}
       </View>
 
-      {restaurantQuery.isLoading ? (
+      {storeQuery.isLoading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
-      ) : restaurant ? (
+      ) : store ? (
         <SectionList
           sections={sections}
           keyExtractor={item => item.id.toString()}
@@ -181,28 +181,28 @@ export default function RestaurantDetailScreen() {
                   <Ionicons name={storeIcon} size={48} color={Colors.primary} />
                 </View>
                 <View style={styles.heroInfo}>
-                  <Text style={styles.restaurantName}>{restaurant.name}</Text>
-                  <Text style={styles.restaurantDesc}>{restaurant.description || restaurant.category}</Text>
+                  <Text style={styles.storeName}>{store.name}</Text>
+                  <Text style={styles.storeDesc}>{store.description || store.category}</Text>
                   <View style={styles.metaRow}>
                     <View style={styles.metaItem}>
                       <Ionicons name="star" size={14} color={Colors.accent} />
-                      <Text style={styles.metaText}>{restaurant.rating?.toFixed(1)}</Text>
+                      <Text style={styles.metaText}>{store.rating?.toFixed(1)}</Text>
                     </View>
                     <View style={styles.dot} />
                     <View style={styles.metaItem}>
                       <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-                      <Text style={styles.metaText}>{restaurant.deliveryTimeMin} {t("min")}</Text>
+                      <Text style={styles.metaText}>{store.deliveryTimeMin} {t("min")}</Text>
                     </View>
                     <View style={styles.dot} />
                     <View style={styles.metaItem}>
                       <Ionicons name="bicycle-outline" size={14} color={Colors.textMuted} />
-                      <Text style={styles.metaText}>{restaurant.deliveryFee === 0 ? t("free") : formatCurrency(restaurant.deliveryFee)}</Text>
+                      <Text style={styles.metaText}>{store.deliveryFee === 0 ? t("free") : formatCurrency(store.deliveryFee)}</Text>
                     </View>
                   </View>
-                  <View style={[styles.openBadge, { backgroundColor: (restaurant.openNow ?? restaurant.isOpen) ? Colors.success + "22" : Colors.error + "22" }]}>
-                    <View style={[styles.openDot, { backgroundColor: (restaurant.openNow ?? restaurant.isOpen) ? Colors.success : Colors.error }]} />
-                    <Text style={[styles.openText, { color: (restaurant.openNow ?? restaurant.isOpen) ? Colors.success : Colors.error }]}>
-                      {(restaurant.openNow ?? restaurant.isOpen) ? t("open") : t("closed")}
+                  <View style={[styles.openBadge, { backgroundColor: (store.openNow ?? store.isOpen) ? Colors.success + "22" : Colors.error + "22" }]}>
+                    <View style={[styles.openDot, { backgroundColor: (store.openNow ?? store.isOpen) ? Colors.success : Colors.error }]} />
+                    <Text style={[styles.openText, { color: (store.openNow ?? store.isOpen) ? Colors.success : Colors.error }]}>
+                      {(store.openNow ?? store.isOpen) ? t("open") : t("closed")}
                     </Text>
                   </View>
                 </View>
@@ -384,8 +384,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   heroInfo: { gap: 8 },
-  restaurantName: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.textPrimary },
-  restaurantDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  storeName: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.textPrimary },
+  storeDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },

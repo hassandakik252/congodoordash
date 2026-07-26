@@ -26,7 +26,7 @@ const registerSchema = z.object({
   password: z.string().min(8),
   name: z.string().min(1),
   phone: z.string().min(1),
-  role: z.enum(["customer", "restaurant_owner", "driver"]),
+  role: z.enum(["customer", "store_owner", "driver"]),
   vehicleType: z.string().optional(),
   acceptTerms: z.literal(true, { message: "You must accept the Terms & Privacy Policy" }),
 });
@@ -68,7 +68,7 @@ router.post("/register", authLimiter, async (req, res) => {
     insertValues.driverStatus = "pending";
     insertValues.vehicleType = vehicleType ?? null;
   }
-  if (role === "restaurant_owner") {
+  if (role === "store_owner") {
     insertValues.merchantStatus = "pending";
   }
 

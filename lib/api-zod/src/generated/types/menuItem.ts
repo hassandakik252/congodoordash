@@ -8,7 +8,7 @@
 
 export interface MenuItem {
   id: number;
-  restaurantId: number;
+  storeId: number;
   name: string;
   description?: string;
   price: number;
