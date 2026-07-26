@@ -33,7 +33,7 @@ export const storesTable = pgTable("restaurants", {
   imageUrl: text("image_url"),
   rating: real("rating").notNull().default(4.5),
   deliveryTimeMin: integer("delivery_time_min").notNull().default(30),
-  deliveryFee: real("delivery_fee").notNull().default(2000),
+  deliveryFee: integer("delivery_fee").notNull().default(2000),
   isOpen: boolean("is_open").notNull().default(true),
   openingHours: text("opening_hours"),
   // Structured weekly hours for auto open/close. Array of 7 (index 0=Sunday..

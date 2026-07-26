@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, pgEnum, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, pgEnum, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -71,14 +71,14 @@ export const ordersTable = pgTable("orders", {
     approved?: boolean | null;        // customer decision on a substitution (null/undefined = awaiting)
     modifiers?: Array<{ label: string; price: number }>; // selected options (price already in `price`)
   }>>(),
-  subtotal: real("subtotal").notNull(),
-  deliveryFee: real("delivery_fee").notNull(),
-  total: real("total").notNull(),
+  subtotal: integer("subtotal").notNull(),
+  deliveryFee: integer("delivery_fee").notNull(),
+  total: integer("total").notNull(),
   notes: text("notes"),
   promoCode: text("promo_code"),
-  discountAmount: real("discount_amount").notNull().default(0),
-  tip: real("tip").notNull().default(0), // driver tip, added to total
-  commission: real("commission").notNull().default(0), // platform cut (on subtotal)
+  discountAmount: integer("discount_amount").notNull().default(0),
+  tip: integer("tip").notNull().default(0), // driver tip, added to total
+  commission: integer("commission").notNull().default(0), // platform cut (on subtotal)
   scheduledFor: timestamp("scheduled_for"), // null = ASAP; else deliver-at time
   cashConfirmed: boolean("cash_confirmed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean, pgEnum, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { storesTable } from "./stores";
@@ -31,7 +31,7 @@ export const productsTable = pgTable("menu_items", {
   storeId: integer("restaurant_id").notNull().references(() => storesTable.id),
   name: text("name").notNull(),
   description: text("description"),
-  price: real("price").notNull(),
+  price: integer("price").notNull(),
   category: text("category").notNull(),
   imageUrl: text("image_url"),
   isAvailable: boolean("is_available").notNull().default(true),
